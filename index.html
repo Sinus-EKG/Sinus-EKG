@@ -647,6 +647,39 @@ html.is-app header.top{padding-top:env(safe-area-inset-top,0px)}
 @media (max-width:640px){.hero .hero-sub{gap:6px 12px;font-size:10.5px}.hero p{font-size:15px}.hero .btnrow .btn.ghost{min-height:40px}}
 #rlFilter,#rmFilt{max-width:100%;min-width:0}label:has(#rlFilter),label:has(#rmFilt){max-width:100%;min-width:0;flex-wrap:wrap}
 
+/* structured read after each answer */
+.sread{margin:12px 0;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:10px 12px}
+.sread summary{cursor:pointer;display:grid;gap:2px;list-style:none}
+.sread summary::-webkit-details-marker{display:none}
+.sread summary small{color:var(--muted);font-size:12.5px}
+.sr-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:0}
+.sr-list li{display:grid;grid-template-columns:22px minmax(84px,.8fr) minmax(0,2fr) auto;gap:8px;align-items:start;padding:8px 0;border-top:1px solid var(--line);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.sr-n{font:600 11px/20px var(--f-mono);text-align:center;width:20px;height:20px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink)}
+.sr-l{font-weight:600;font-size:13.5px}
+.sr-v{font-size:13.5px;color:var(--fg);overflow-wrap:anywhere}
+.sr-m{display:flex;gap:4px}
+.sr-m button{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font-weight:700}
+.sr-m .sr-ok[aria-pressed="true"]{background:var(--good-soft);color:var(--good);border-color:var(--good)}
+.sr-m .sr-no[aria-pressed="true"]{background:var(--bad-soft);color:var(--bad);border-color:var(--bad)}
+.sr-sum{font-size:13px;color:var(--muted);padding-top:8px;border-top:1px solid var(--line)}
+@media (max-width:520px){.sr-list li{grid-template-columns:22px minmax(0,1fr) auto;}.sr-v{grid-column:2/3}.sr-m{grid-row:1/3;grid-column:3}}
+.cmp-b{margin-left:6px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent-ink);border-radius:999px;font-size:12px;font-weight:700;padding:2px 10px;min-height:28px;white-space:nowrap}
+/* compare view */
+.cmpv .cv-body{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:10px;padding:10px max(10px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px))}
+.cmpv .cv-row{display:flex;gap:10px}
+.cmpv .cv-row .cv-pane{flex:1;min-width:0}
+.cmpv .seg{flex-wrap:nowrap}.cmpv .fv-t{min-width:0;flex:0 1 auto}
+.cmpv .cv-pane canvas{display:block;width:100%;height:200px;border-radius:6px}
+.cmpv .cv-time{display:flex;align-items:center;gap:10px;color:#ccc;font:600 12px var(--f-mono)}.cmpv .cv-time input{flex:1}
+.cmpv .cv-cap{font:600 12px var(--f-mono);color:#ddd;margin:0 0 6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cmpv .cv-k{display:inline-block;width:18px;height:3px;background:#f2f2f2}.cmpv .cv-k.b{background:#e8620c}
+.cmpv .cv-note{color:#aaa;margin-top:6px}
+.cmpv .cv-lead{background:#202126;color:#eee;border:1px solid #33343a;border-radius:8px;min-height:38px}
+.cmpv .seg{display:flex;gap:4px}
+@media (max-width:700px){.cmpv .fv-bar{flex-wrap:wrap}.cmpv .fv-t{display:none}.cmpv .cv-row{flex-direction:column}}
+html.px .sread,html.px .sr-m button{border-radius:0!important;border-width:2px}
+html.px .cmp-b{border-radius:0!important;font-family:var(--f-px);font-weight:400}
+
 /* ================= PIXEL LOOK (the installed app; same 8-bit kit as Orange and Yuzu) =================
    Console palette, square corners with a one-pixel notch, bevelled panels and buttons, "Orange Pixel"
    (5×7, drawn for Orange) for headings and numbers. Body text stays sans. No gradients, blur or glow. */
@@ -1327,8 +1360,10 @@ function Viewer(host,opts){
     onNew(cb){st.onNew=cb;},
     calMs(){return Math.round(Math.abs(st.cb-st.ca)*40);},
     setFitH(b){st.fitH=b;st.zp=null;st.zi=0;if(st.data)render();},
-    redraw(){if(st.data)render();}
+    redraw(){if(st.data)render();},
+    data(){return st.data;},label(){return st.label;}
   };
+  el.__api=api;
   if(opts.cal) api.setCal(true);
   return api;
 }
@@ -3129,8 +3164,8 @@ function lc1(x){return String(x||'');}
 function whyNot(cid,opts,chosen,okIds,title){okIds=okIds||[cid];const c=PAT[cid];const rows=(opts||[]).filter(o=>!okIds.includes(o)&&PAT[o]).map(o=>{const q=PAT[o],du=duelFor(cid,o);
     const r=du?du.t.slice(0,2).map(esc).join(' '):'It would show: '+esc(lc1(q.look[0]))+(q.look[1]?'; '+esc(lc1(q.look[1])):'')+'. Here the deciding finding is: '+esc(lc1(c.look[0]))+'.';
     const urg=dangerOf(o)!==dangerOf(cid)?' <span class="muted">Urgency would also differ: '+DLAB[dangerOf(o)].toLowerCase()+' rather than '+DLAB[dangerOf(cid)].toLowerCase()+'.</span>':'';
-    return '<li'+(o===chosen?' class="yours"':'')+'><b>'+esc(q.name)+(o===chosen?' (your answer)':'')+':</b> '+r+urg+'</li>';});
-  return rows.length?'<div class="whynot"><b>'+(title||'Why not the other options')+'</b><ul class="bul">'+rows.join('')+'</ul></div>':'';}
+    return '<li'+(o===chosen?' class="yours"':'')+'><b>'+esc(q.name)+(o===chosen?' (your answer)':'')+':</b> '+r+urg+' <button class="cmp-b" data-cmpx="'+o+'">Compare ⇄</button></li>';});
+  return '<div class="sread-slot" data-pr="'+cid+'"></div>'+(rows.length?'<div class="whynot"><b>'+(title||'Why not the other options')+'</b><ul class="bul">'+rows.join('')+'</ul></div>':'');}
 function duelFor(a,b){return DUELS.find(x=>(x.d===a&&x.m===b)||(x.d===b&&x.m===a));}
 
 /* ---------- Learn: today panel ---------- */
@@ -5399,7 +5434,7 @@ async function mxShow(){
   it.primary=primary;it.ok=okIds;it.opts=mxOptions(primary,okIds);
   $('mxVig').innerHTML='<b>Context</b><span>'+esc(vig||'')+'</span>';$('mxVig').hidden=true;$('mxHint').hidden=MX.mode!=='session';$('mxHint').setAttribute('aria-pressed','false');
   $('mxConf').hidden=MX.mode==='speed';
-  $('mxOpts').innerHTML=it.opts.map((id,i)=>'<button class="opt" data-mxa="'+id+'"><kbd>'+(i+1)+'</kbd><span>'+esc(PAT[id].name)+'</span></button>').join('');
+  $('mxOpts').innerHTML=it.opts.map((id,i)=>'<button class="opt" data-mxa="'+id+'"><kbd>'+(i+1)+'</kbd><span>'+esc(qname(id))+'</span></button>').join('');
   $('mxFb').innerHTML='';mxv.setFocus(false);mxv.showFocusBtn(false);mxv.set(D,it.kind==='syn'?PAT[primary].focus:[],it.kind==='real'?'Real ECG':'Practice ECG');
   MX.t0=Date.now();$('mxTbar').style.width='0';$('mxTbarWrap').hidden=MX.mode!=='speed';
   if(MX.mode==='speed'){MX.timer=setInterval(()=>{const f=Math.min(1,(Date.now()-MX.t0)/20000);$('mxTbar').style.width=(f*100)+'%';if(f>=1){clearInterval(MX.timer);mxAnswer(null,null);}},100);}
@@ -5863,7 +5898,7 @@ async function rmNext(){const o=rmPick();if(!o){$('rmQ').innerHTML='<p class="no
   RM.o=o;RM.ans=false;RM.t0=Date.now();const D=await decodeReal(o);if(RM.o!==o)return;RM.v.set(D,[],'Real ECG');RM.v.setFocus(false);RM.v.showFocusBtn(false);
   const pr=realPrimary(o),okIds=o.pats.filter(qok);RM.ok=okIds;$('rmFb').innerHTML='';
   $('rmCtx').innerHTML='<b>Patient</b><span>'+esc(o.info||'Details not given')+' · '+esc((RSRC[o.ds]||{}).short||o.ds)+'</span>';
-  if(RM.mode==='quick'){RM.opts=mxOptions(pr,okIds);$('rmQ').textContent='What is the main finding?';$('rmOpts').innerHTML=RM.opts.map((id,i)=>'<button class="opt" data-rma="'+id+'"><kbd>'+(i+1)+'</kbd><span>'+esc(PAT[id].name)+'</span></button>').join('');}
+  if(RM.mode==='quick'){RM.opts=mxOptions(pr,okIds);$('rmQ').textContent='What is the main finding?';$('rmOpts').innerHTML=RM.opts.map((id,i)=>'<button class="opt" data-rma="'+id+'"><kbd>'+(i+1)+'</kbd><span>'+esc(qname(id))+'</span></button>').join('');}
   else{$('rmQ').innerHTML='Read it fully first: rate, rhythm, axis, intervals, morphology, then your diagnosis and what you would do. Say it out loud or jot it down.';$('rmOpts').innerHTML='<textarea id="rmTxt" rows="3" placeholder="Your read (optional, stays on this device)"></textarea><div class="btnrow"><button class="btn" id="rmReveal">Reveal the labels</button></div>';}}
 function rmRecord(o,ok,partial){const st=rmS();const s=st.seen[o.id]||(st.seen[o.id]={n:0,m:0,t:0});s.n++;s.t=Date.now();if(ok)s.m=Math.max(0,s.m-1);else s.m++;st.n++;if(ok)st.c+=partial?.5:1;const d=dkey();st.days[d]=(st.days[d]||0)+1;
   const pr=realPrimary(o);if(pr){const ps=S.stats[pr]||(S.stats[pr]={n:0,c:0});ps.n++;if(ok&&!partial)ps.c++;srsUpdate(pr,ok);}logRead();
@@ -5871,7 +5906,7 @@ function rmRecord(o,ok,partial){const st=rmS();const s=st.seen[o.id]||(st.seen[o
   const k=Object.keys(st.seen);if(k.length>6000){k.sort((a,b)=>st.seen[a].t-st.seen[b].t).slice(0,1000).forEach(x=>delete st.seen[x]);}save();rmHead();}
 function rmShowAnswer(ok,id,btn){const o=RM.o;const pr=realPrimary(o);const p=PAT[pr];
   $('rmFb').innerHTML='<div class="fb '+(ok===true?'ok':ok===false?'no':'')+'">'+(ok!=null?'<div class="verdict"><i>'+(ok?'✓':'✕')+'</i>'+esc(p.name)+' '+dchip(pr)+'</div>':'')+'<div id="rmInfo"></div>'+
-    (RM.mode==='quick'&&id?whyNot(pr,RM.opts,id,RM.ok):'<p>'+esc(p.sum)+'</p>')+
+    (RM.mode==='quick'&&id?whyNot(pr,RM.opts,id,RM.ok):'<div class="sread-slot" data-pr="'+pr+'"></div><p>'+esc(p.sum)+'</p>')+
     (RM.mode==='full'?'<div class="eyebrow" style="margin-top:10px">How did your read compare?</div><div class="btnrow"><button class="btn" data-rmself="1">Got it</button><button class="btn ghost" data-rmself="0.5">Partly</button><button class="btn ghost" data-rmself="0">Missed it</button></div>':'<div class="btnrow"><button class="btn" id="rmNextB">Next ECG →</button><button class="btn ghost" data-lesson-open="'+pr+'">Open the lesson</button><button class="btn ghost" data-mread="1">Machine read ⚙</button></div>')+'</div>';
   renderRealInfo($('rmInfo'),o,false);RM.v.showFocusBtn(!!(o.beats&&o.beats.length));const nb=$('rmNextB');if(nb)nb.focus({preventScroll:true});}
 function roomInit(){
@@ -6230,6 +6265,102 @@ if(APP.sw()){addEventListener('load',()=>{navigator.serviceWorker.register('sw.j
 if(APP.standalone())document.documentElement.classList.add('is-app');
 
 applyFx();
+
+/* ================= AFTER EACH ANSWER: the expert's structured read + compare with a look-alike (01/11/2026) ================= */
+function viewerDataNear(el){const sec=el.closest('section.view,.fullv,.sheet-in')||document;const vs=[...sec.querySelectorAll('.viewer')].filter(v=>v.__api&&v.__api.data());return vs.length?{D:vs[0].__api.data(),label:vs[0].__api.label()}:null;}
+function sreadS(){S.sread=S.sread||{};return S.sread;}
+const SR_STEPS=[['rate','Rate'],['rhythm','Rhythm'],['axis','Axis'],['pr','P waves & PR'],['qrs','QRS'],['find','ST, T & key findings'],['qt','QT / QTc'],['dx','Conclusion']];
+const bandLab=(tab,v)=>{const r=(tab||[]).find(x=>x[0]===v);return r?r[1]:'';};
+function realMeasures(D){const L=D.sig.II?'II':Object.keys(D.sig)[0];let R=null;try{R=window.__mrProcess?window.__mrProcess(D.sig[L]):null;}catch(e){}
+  let axis=null;if(D.sig.I&&D.sig.aVF&&R&&R.pk.length){const net=s=>{let t=0;R.pk.forEach(p=>{let mx=-9,mn=9;for(let k=Math.max(0,p-30);k<Math.min(s.length,p+30);k++){mx=Math.max(mx,s[k]);mn=Math.min(mn,s[k]);}t+=mx+mn;});return t/R.pk.length;};axis=Math.round(Math.atan2(net(D.sig.aVF),net(D.sig.I))*180/Math.PI);}
+  return {R,axis,lead:L};}
+function sreadModel(D,pr){const p=PAT[pr];if(!p)return null;const rows={};const hint={};
+  if(D&&D.P&&!D.real){const T=truthFor(p,D),m=measures(D.P);
+    rows.rate=T.rateN+'/min · '+bandLab(RATEB,T.rate)+(T.irregular?' · irregular':'');
+    rows.rhythm=bandLab(RHC,T.rhythm);
+    rows.axis=T.axis?bandLab(AXB,T.axis)+' (≈'+Math.round(D.P.axis)+'°)':'Not assessable in this rhythm';
+    rows.pr=T.pr==='na'?bandLab(PRB,'na'):bandLab(PRB,T.pr)+' · '+m.pr+' ms';
+    rows.qrs=bandLab(QRSB,T.qrs)+(T.rhythm==='arrest'?'':' · '+(T.qrs==='wide'?Math.max(120,D.P.qrs||m.qrs):m.qrs)+' ms');
+    rows.qt=T.qt==='na'?bandLab(QTB,'na'):bandLab(QTB,T.qt)+(m.qtc?' · QTc '+m.qtc+' ms':'');
+  }else{const M=realMeasures(D),R=M.R,f=v=>v==null?'–':Math.round(v);const T={rhythm:RHY_OF[pr]||'sinus'};
+    rows.rate=R&&R.hr?f(R.hr)+'/min'+(R.irr>.12?' · irregular':' · regular'):'–';
+    rows.rhythm=bandLab(RHC,T.rhythm);
+    rows.axis=M.axis==null?'Needs leads I and aVF':bandLab(AXB,axBand(M.axis))+' (≈'+M.axis+'°, machine estimate)';
+    rows.pr=R&&R.PR&&R.pFound>R.pk.length*.6?f(R.PR)+' ms · '+bandLab(PRB,R.PR<120?'short':R.PR>200?'long':'normal'):(R&&R.pFound<R.pk.length*.4?'P waves not consistently seen':'Not reliably measurable');
+    rows.qrs=R&&R.QRS?f(R.QRS)+' ms (machine estimate)':'–';
+    rows.qt=R&&R.qtcB?'QTc '+f(R.qtcB)+' ms (Bazett, machine estimate; check by hand)':'Cannot assess';}
+  rows.find=(p.look||[]).slice(0,4).map(esc).join('<br>');
+  rows.dx='<b>'+esc(p.name)+'</b> · '+DLAB[dangerOf(pr)]+' · '+esc(bandLab(ACTS,actOf(pr))||'');
+  const r=(k)=>REF[k]?REF[k][1]+' '+(REF[k][2]||''):'';
+  hint.rate=['Rate','Regular: 300 ÷ big squares between R waves (or 1500 ÷ small squares). Irregular: count QRS in 10 s × 6. '+r('hr')];
+  hint.rhythm=['Rhythm','Ask: regular or not? P before every QRS? QRS after every P? Same P shape? Sinus = upright P in I and II, inverted in aVR, constant PR.'];
+  hint.axis=['Axis','Lead I and aVF both positive = normal. I positive, aVF negative: check II (positive = still normal to −30°; negative = left axis). I negative, aVF positive = right axis. '+r('axis')];
+  hint.pr=['P waves & PR',r('pr')+' '+r('p')];
+  hint.qrs=['QRS',r('qrs')+' Wide + regular + fast = VT until proven otherwise.'];
+  hint.find=['ST, T & key findings','The findings that make this diagnosis: '+(p.look||[]).join(' · ')+(p.pearl?' Pearl: '+p.pearl:'')];
+  hint.qt=['QT / QTc',r('qtcb')+' '+r('qtcf')];
+  hint.dx=['Conclusion',(p.sum||'')+' Triage: '+DLAB[dangerOf(pr)]+'.'];
+  return {rows,hint,p};}
+function sreadPanel(slot){if(slot.dataset.done)return;const pr=slot.dataset.pr;const near=viewerDataNear(slot);if(!near||!PAT[pr])return;slot.dataset.done=1;
+  const M=sreadModel(near.D,pr);if(!M)return;const st=sreadS();
+  slot.innerHTML='<details class="sread" open><summary><span class="eyebrow">Structured read of this ECG</span><small>Compare it with your own read · hold any line for more · mark each step</small></summary>'+
+    '<ol class="sr-list">'+SR_STEPS.map(([k,l],i)=>'<li data-hint="'+esc(M.hint[k][0]+'|'+M.hint[k][1])+'"><span class="sr-n">'+(i+1)+'</span><span class="sr-l">'+l+'</span><span class="sr-v">'+M.rows[k]+'</span><span class="sr-m"><button class="sr-ok" data-sr="'+k+'" data-v="1" aria-label="I got this step">✓</button><button class="sr-no" data-sr="'+k+'" data-v="0" aria-label="I missed this step">✕</button></span></li>').join('')+'</ol>'+
+    '<div class="sr-sum"></div></details>';
+  const marks={};const sum=slot.querySelector('.sr-sum');
+  const upd=()=>{const n=Object.keys(marks).length,ok=Object.values(marks).filter(Boolean).length;const weak=SR_STEPS.map(([k,l])=>{const s=st[k];return s&&s.n>=5?[l,Math.round(s.ok/s.n*100)]:null;}).filter(Boolean).sort((a,b)=>a[1]-b[1])[0];
+    sum.innerHTML=(n?'This ECG: you matched <b>'+ok+' of '+n+'</b> steps. ':'Tap ✓ or ✕ on each step to track your structured reading. ')+(weak?'Your weakest step so far: <b>'+esc(weak[0])+'</b> ('+weak[1]+'%).':'');};
+  slot.addEventListener('click',e=>{const b=e.target.closest('[data-sr]');if(!b)return;const k=b.dataset.sr,v=b.dataset.v==='1';const prev=marks[k];
+    const s=st[k]||(st[k]={n:0,ok:0});if(prev===undefined)s.n++;else if(prev)s.ok--;if(v)s.ok++;marks[k]=v;save();
+    b.parentNode.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));vib(6);upd();});
+  upd();}
+new MutationObserver(()=>{document.querySelectorAll('.sread-slot:not([data-done])').forEach(s=>{try{sreadPanel(s);}catch(e){logErr&&logErr('sread '+e.message);}});}).observe(document.body,{childList:true,subtree:true});
+
+/* ---------- compare two ECGs: stacked 12-leads, overlay of one lead, or side by side ---------- */
+const CMPV={};
+function openCompare(A,labelA,id,labelB){if(!A||!PAT[id])return;closeFull();
+  const el=document.createElement('div');el.className='fullv cmpv';el.innerHTML='<div class="fv-wrap"><div class="fv-bar"><button class="fv-x" data-cv="x" aria-label="Close">✕</button><b class="fv-t">'+esc(labelA)+' ⇄ '+esc(PAT[id].name)+'</b><span class="sp"></span>'+
+    '<div class="seg cv-mode">'+[['stack','Stacked'],['over','Overlay'],['side','Side by side']].map((m,i)=>'<button class="tool" data-cm="'+m[0]+'" aria-pressed="'+(i===0)+'">'+m[1]+'</button>').join('')+'</div>'+
+    '<select class="cv-lead" aria-label="Lead" hidden></select><button class="tool" data-cv="src" data-hint="Example|Switch the comparison between a teaching ECG and a real recording of the same diagnosis.">Teaching</button><button class="tool" data-cv="new" aria-label="Another example">↻</button><button class="tool" data-cv="rot" data-hint="Turn|Turns the view sideways for phones held upright.">⟳</button></div><div class="cv-body"></div></div>';
+  document.body.appendChild(el);document.body.classList.add('noscroll');
+  const C={el,A,labelA,id,labelB:labelB||PAT[id].name,mode:'stack',lead:'II',real:false,B:null,o:null};Object.assign(CMPV,C);FV={el,v:{redraw(){cvRender();}},rot:false};
+  const leads=Object.keys(A.sig);const sel=el.querySelector('.cv-lead');sel.innerHTML=leads.map(l=>'<option'+(l===(A.sig.II?'II':leads[0])?' selected':'')+'>'+l+'</option>').join('');CMPV.lead=sel.value;
+  sel.onchange=()=>{CMPV.lead=sel.value;cvRender();};
+  el.addEventListener('click',async e=>{const b=e.target.closest('[data-cm],[data-cv]');if(!b)return;
+    if(b.dataset.cm){CMPV.mode=b.dataset.cm;el.querySelectorAll('[data-cm]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));cvRender();return;}
+    const a=b.dataset.cv;if(a==='x')closeFull();
+    if(a==='new'){await cvMakeB();cvRender();}
+    if(a==='src'){CMPV.real=!CMPV.real;b.textContent=CMPV.real?'Real':'Teaching';await cvMakeB();cvRender();}
+    if(a==='rot'){FV.rot=!FV.rot;el.classList.toggle('rot',FV.rot);b.setAttribute('aria-pressed',String(FV.rot));fvRotStyle();setTimeout(cvRender,60);}});
+  addEventListener('resize',cvRender);history.pushState&&history.pushState({fv:1},'');
+  cvMakeB().then(cvRender);}
+async function cvMakeB(){const id=CMPV.id;CMPV.o=null;
+  if(CMPV.real){if(!REAL){try{await loadReal();}catch(e){}}const pool=REAL?REAL.recs.filter(o=>realPrimary(o)===id):[];if(pool.length){const o=pool[Math.floor(Math.random()*pool.length)];CMPV.o=o;CMPV.B=await decodeReal(o);CMPV.labelB=PAT[id].name+' · real ('+((RSRC[o.ds]||{}).short||o.ds)+')';return;}toast('No real recording of '+PAT[id].name+' yet: showing a teaching ECG.');CMPV.real=false;const sb=CMPV.el.querySelector('[data-cv=src]');if(sb)sb.textContent='Teaching';}
+  CMPV.B=synth(makeParams(PAT[id],Math.floor(Math.random()*1e6)));CMPV.labelB=PAT[id].name+' · teaching ECG';}
+function cvSig(D,L){return D.sig[L]||D.sig.II||D.sig[Object.keys(D.sig)[0]];}
+function cvRender(){const el=CMPV.el;if(!el||!el.isConnected||!CMPV.B)return;const body=el.querySelector('.cv-body');const sel=el.querySelector('.cv-lead');sel.hidden=CMPV.mode==='stack';
+  body.className='cv-body cv-'+CMPV.mode;body.innerHTML='';
+  if(CMPV.mode!=='stack'){const win=cvWin(),mx=10-win;CMPV.t0=Math.min(CMPV.t0||0,mx);const tb=document.createElement('label');tb.className='cv-time';tb.innerHTML='<span>Window '+CMPV.t0.toFixed(1)+'–'+(CMPV.t0+win).toFixed(1)+' s</span><input type="range" min="0" max="'+mx+'" step="0.5" value="'+CMPV.t0+'" aria-label="Time window">';body.appendChild(tb);
+    tb.querySelector('input').oninput=e=>{CMPV.t0=+e.target.value;cvRender();};}
+  if(CMPV.mode==='stack'){[[CMPV.A,'Your ECG: '+CMPV.labelA],[CMPV.B,CMPV.labelB]].forEach(([D,l])=>{const box=document.createElement('div');box.className='cv-pane';box.innerHTML='<div class="cv-cap">'+esc(l)+'</div>';body.appendChild(box);const v=Viewer(box,{noNew:true,noFull:true,noFocus:true,mode:D.real?undefined:'12'});v.set(D,[],l);});return;}
+  if(CMPV.mode==='side'){const row=document.createElement('div');row.className='cv-row';body.appendChild(row);const sa=cvSig(CMPV.A,CMPV.lead),sb=cvSig(CMPV.B,CMPV.lead);const rg=cvRange([sa,sb]);
+    [[sa,'Your ECG: '+CMPV.labelA],[sb,CMPV.labelB]].forEach(([sg,l])=>{const box=document.createElement('div');box.className='cv-pane';box.innerHTML='<div class="cv-cap">'+esc(l)+' · '+esc(CMPV.lead)+'</div><canvas></canvas>';row.appendChild(box);requestAnimationFrame(()=>cvStrip(box.querySelector('canvas'),[[sg,pal().ink]],rg));});return;}
+  // overlay: both traces on one strip, aligned on the first QRS
+  const box=document.createElement('div');box.className='cv-pane';box.innerHTML='<div class="cv-cap"><span class="cv-k a"></span>Your ECG · <span class="cv-k b"></span>'+esc(CMPV.labelB)+' · lead '+esc(CMPV.lead)+'</div><canvas></canvas><div class="note cv-note">Aligned on the first QRS. Where the orange and black traces part company is where the two diagnoses differ.</div>';body.appendChild(box);
+  const a=cvSig(CMPV.A,CMPV.lead),b=cvSig(CMPV.B,CMPV.lead);let sh=0;try{const pa=window.__mrProcess(a).pk[0],pb=window.__mrProcess(b).pk[0];if(pa!=null&&pb!=null)sh=pb-pa;}catch(e){}
+  const bs=new Float32Array(a.length);for(let k=0;k<a.length;k++){const j=k+sh;bs[k]=j>=0&&j<b.length?b[j]:NaN;}
+  requestAnimationFrame(()=>cvStrip(box.querySelector('canvas'),[[a,pal().ink],[bs,'rgba(232,98,12,.85)']]));}
+function cvWin(){const side=CMPV.mode==='side'&&innerWidth>=700;return innerWidth<700?4:side?5:6;}
+function cvRange(sigs){const win=cvWin(),t0=Math.min(CMPV.t0||0,10-win),k0=Math.round(t0*1000/DT),k1=Math.round((t0+win)*1000/DT);let lo=9,hi=-9;sigs.forEach(s=>{for(let k=k0;k<k1;k+=3){const v=s[k];if(v===v){lo=Math.min(lo,v);hi=Math.max(hi,v);}}});return [lo,hi];}
+function cvStrip(cv,traces,rg){const win=cvWin(),t0=Math.min(CMPV.t0||0,10-win),k0=Math.round(t0*1000/DT),k1=Math.round((t0+win)*1000/DT);const [lo,hi]=rg||cvRange(traces.map(t=>t[0]));
+  const W=cv.clientWidth||300,ppm0=W/(win*25),Hmm=Math.max(20,Math.min(60,(hi-lo)*10+12));cv.style.height=Math.round(Hmm*ppm0)+'px';
+  const T=fitCv(cv),x=T.x,w=T.w,h=T.h,ppm=w/(win*25);paperGrid(x,w,h,ppm);
+  const sc=10*ppm,y0=h/2+((hi+lo)/2)*sc;
+  traces.forEach(([s,col])=>{x.strokeStyle=col;x.lineWidth=1.8;x.lineJoin='round';x.beginPath();let pen=false;for(let k=k0;k<k1;k++){const v=s[k];if(v!==v){pen=false;continue;}const X=(k-k0)*DT*.025*ppm,Y=y0-v*sc;if(pen)x.lineTo(X,Y);else{x.moveTo(X,Y);pen=true;}}x.stroke();});}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-cmpx]');if(!b)return;const near=viewerDataNear(b);if(!near){toast('Open the ECG first.');return;}openCompare(near.D,near.label&&near.label.length<40?near.label:'This ECG',b.dataset.cmpx);});
+
+/* answer options use a name that names the diagnosis without describing the finding (e.g. "Sick sinus syndrome", not "… (tachy-brady)") */
+const QN={sss:'Sick sinus syndrome',hypothermia:'Hypothermia',oldmi:'Prior inferior MI',lae:'Left atrial enlargement',rae:'Right atrial enlargement',pasys:'Ventricular standstill',sgarbossa:'STEMI in LBBB',evolvingmi:'Evolving anterior MI',brugada2:'Brugada pattern type 2',pvt:'Polymorphic VT',atblock:'Atrial tachycardia with block',cnst:'Cerebral T waves'};
+function qname(id){return QN[id]||PAT[id].name;}
 
 /* KIT-END */
 /* ================= BOOT ================= */

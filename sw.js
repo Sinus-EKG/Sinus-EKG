@@ -1,5 +1,5 @@
 /* Sinus service worker: offline shell, real-ECG chunks kept across versions, update only when the user taps Update. */
-const VER='c312dde4a53f';
+const VER='2f14a761a2d1';
 const SHELL='sinus-shell-'+VER, REALC='sinus-real-v1', FONTS='sinus-fonts-v1';
 const PRE=["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-180.png", "icons/favicon-32.png", "real/index.json"];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(SHELL).then(c=>c.addAll(PRE.map(u=>new Request(u,{cache:'reload'})))));});
