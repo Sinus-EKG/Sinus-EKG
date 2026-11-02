@@ -9073,10 +9073,10 @@ const syOpenSheet=openSheet;
 openSheet=function(html){syOpenSheet(html);try{Promise.resolve().then(()=>{try{sySettings();}catch(e){}});}catch(e){}};
 
 /* ================= CITRUS HUB: Sinus tells the scheduler (Citrus Maxima) what it needs today ================= */
-/* Writes <Drive>/Citrus Maxima/Apps/Sinus.status.json (the shape the scheduler reads) after each practice, at most every 5 min.
+/* Writes <Drive>/My Apps/hub/sinus/status.json (the shape the scheduler reads) after each practice, at most every 5 min.
    Uses the same Google sign-in as Drive sync (one shared Client ID from the Citrus Cloud project). */
-const HUB={root:'Citrus Maxima',file:'Sinus.status.json',url:'https://sinus-ekg.github.io/Sinus-EKG/',last:0,fp:'',timer:null};
-const hubGet=()=>syGet('sinus_hub')||{};const hubSet=p=>sySet('sinus_hub',Object.assign(hubGet(),p));
+const HUB={root:'My Apps',file:'status.json',url:'https://sinus-ekg.github.io/Sinus-EKG/',last:0,fp:'',timer:null};
+const hubGet=()=>{const h=syGet('sinus_hub')||{};if(h.layout!==2){sySet('sinus_hub',{layout:2});try{const b=syGet('sinus_bk')||{};if(b.dir){delete b.dir;sySet('sinus_bk',b);}}catch(e){}return {layout:2};}return h;};const hubSet=p=>sySet('sinus_hub',Object.assign(hubGet(),p));
 function hubStatus(){const today=dkey();const mx=S.mx&&S.mx.start?S.mx:null;const sessDone=!!(mx&&mx.done&&mx.done[today]);
   const due=dueIds().length;const rm=S.rm||{};const misses=Object.values(rm.seen||{}).filter(s=>s.m>0).length;
   const todayReal=(rm.days&&rm.days[today])||0;const log=(mxS().log||[]);const t0=new Date(today+'T00:00:00').getTime();const todayAns=Math.max(log.filter(r=>r[0]>=t0).length,(S.conf||[]).filter(r=>r[0]>=t0).length);
@@ -9099,7 +9099,7 @@ async function hubFolder(name,parent){const q="name='"+name.replace(/'/g,"\\'")+
 async function hubWrite(force){const c=syGet(SYK)||{};if(c.kind!=='drive'||!c.client)return;if(!gTok())return;if(navigator.onLine===false)return;
   const st=hubStatus();const fp=JSON.stringify(Object.assign({},st,{updatedAt:0}));const h=hubGet();
   if(!force&&(fp===h.fp||Date.now()-(h.at||0)<5*60000))return;if(HUB.busy)return;HUB.busy=true;
-  try{let apps=h.apps;if(!apps){const root=await hubFolder(HUB.root,'root');apps=await hubFolder('Apps',root);hubSet({apps});}
+  try{let apps=h.apps;if(!apps){const root=await hubFolder(HUB.root,'root');const hub=await hubFolder('hub',root);apps=await hubFolder('sinus',hub);hubSet({apps});}
     let fid=h.fid;const put=async()=>{const q="name='"+HUB.file+"' and '"+apps+"' in parents and trashed=false";if(!fid){const j=await hubFetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id)');fid=j.files&&j.files[0]&&j.files[0].id;}
       const bnd='sinus'+Date.now().toString(36);const meta=JSON.stringify(fid?{name:HUB.file}:{name:HUB.file,parents:[apps],mimeType:'application/json'});
       const body='--'+bnd+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+meta+'\r\n--'+bnd+'\r\nContent-Type: application/json\r\n\r\n'+JSON.stringify(st)+'\r\n--'+bnd+'--';
@@ -9122,7 +9122,7 @@ window.SINUS_HUB={status:hubStatus,write:()=>hubWrite(true)};
 /* ================= DRIVE BACKUP (visible folder Citrus Maxima/Sinus): casebook PDF, monthly answers CSV, recap image ================= */
 const BK={folder:'Sinus',busy:false};
 const bkGet=()=>syGet('sinus_bk')||{};const bkSet=p=>sySet('sinus_bk',Object.assign(bkGet(),p));
-async function bkFolder(){const h=bkGet();if(h.dir)return h.dir;const root=await hubFolder(HUB.root,'root');const dir=await hubFolder(BK.folder,root);bkSet({dir});return dir;}
+async function bkFolder(){const h=bkGet();if(h.dir)return h.dir;const root=await hubFolder(HUB.root,'root');const hub=await hubFolder('hub',root);const dir=await hubFolder('sinus',hub);bkSet({dir});return dir;}
 async function bkFind(name,dir){const q="name='"+name.replace(/'/g,"\\'")+"' and '"+dir+"' in parents and trashed=false";const j=await hubFetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id,size,modifiedTime)');return j.files&&j.files[0]||null;}
 async function bkUpload(name,blob,mime,dir,fid){const meta=JSON.stringify(fid?{name}:{name,parents:[dir],mimeType:mime});const bnd='sinusbk'+Date.now().toString(36);
   const head='--'+bnd+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+meta+'\r\n--'+bnd+'\r\nContent-Type: '+mime+'\r\n\r\n';
