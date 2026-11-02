@@ -1236,6 +1236,7 @@ html.nomotion #sySet .sy-dot.busy{animation:none}
 #sySet .btnrow .btn,#sySet .btnrow .tool{min-height:44px}
 html.px #sySet .sy-f input,html.px #sySet .sy-how,html.px #sySet .sy-stat{border-radius:0;border-width:2px}
 html.px #sySet .sy-dot{border-radius:0;animation:none}
+.sy-kind{margin:8px 0 10px}
 
 /* APP-CSS-END */
 </style>
@@ -8858,12 +8859,50 @@ const SY_CORE=(function(){
     const body={message:'Sinus sync '+doc.at+(dev?' ('+dev+')':''),content:b64e(JSON.stringify(doc))};if(R)body.sha=R.sha;
     const res=await gh(env,cfg,'/contents/'+FILE,{method:'PUT',body});
     return res&&res.content?res.content.sha:null;}
+  /* ---- Google Drive (hidden app-data folder) ---- */
+  const DR='https://www.googleapis.com/drive/v3/files',DRU='https://www.googleapis.com/upload/drive/v3/files',DRN='sinus-state.json';
+  function drExplain(st,body){const msg=body&&body.error&&body.error.message||'';
+    if(st===401)return 'Google sign-in expired. Tap Sync now to sign in again.';
+    if(st===403)return /rate|quota/i.test(msg)?'Google asked to slow down. Try again in a minute.':'Google refused: the app needs the Drive app-data permission. Sign in again and allow it.';
+    if(st===404)return 'The sync file was not found; it will be created on the next sync.';
+    if(st>=500)return 'Google Drive is having trouble ('+st+'). Nothing was changed; it will retry.';
+    return 'Google Drive returned '+st+(msg?': '+msg:'')+'.';}
+  async function dr(env,cfg,url,o){o=o||{};let last;const tok=await env.token(o.interactive);if(!tok)throw new SyncError('Not signed in to Google. Tap Sync now to sign in.',{status:401});
+    for(let i=0;i<3;i++){if(i)await env.sleep(600*Math.pow(2,i-1));let res;
+      try{res=await env.fetch(url,{method:o.method||'GET',cache:'no-store',headers:Object.assign({'Authorization':'Bearer '+tok},o.headers||{}),body:o.body});}
+      catch(e){last=new SyncError('No connection to Google Drive (offline, or the network blocks it). Nothing was changed; it will retry.',{retryable:true});continue;}
+      if(res.ok)return o.raw?res.text():(res.status===204?null:res.json());
+      let body=null;try{body=await res.json();}catch(e){}
+      if(res.status===401){env.forget&&env.forget();}
+      if(o.okMissing&&res.status===404)return null;
+      const err=new SyncError(drExplain(res.status,body),{status:res.status,retryable:res.status>=500});
+      if(res.status>=500){last=err;continue;}throw err;}
+    throw last;}
+  async function drFind(env,cfg){const j=await dr(env,cfg,DR+'?spaces=appDataFolder&fields=files(id,version,modifiedTime)&q='+encodeURIComponent("name='"+DRN+"' and trashed=false"));const f=j&&j.files&&j.files[0];return f||null;}
+  async function drPull(env,cfg){const f=await drFind(env,cfg);if(!f)return null;
+    const text=await dr(env,cfg,DR+'/'+f.id+'?alt=media',{raw:true});let j;try{j=JSON.parse(text);}catch(e){throw new SyncError('The cloud file '+DRN+' is unreadable. Nothing was changed here.');}
+    if(!j||j.app!=='sinus'||!isObj(j.s))throw new SyncError('The cloud file '+DRN+' is not Sinus data. Nothing was changed here.');
+    return {sha:f.id+'@'+f.version,fid:f.id,ver:f.version,id:j.id||'',ids:Array.isArray(j.ids)?j.ids:[],s:j.s,t:isObj(j.t)?j.t:{},seq:j.seq||0};}
+  async function drPush(env,cfg,M,R,dev,clock,id){
+    const doc={app:'sinus',v:1,id:id||'',ids:((R&&R.ids)||[]).concat(R&&R.id?[R.id]:[]).slice(-40),seq:((R&&R.seq)||0)+1,at:clock.now(),dev:dev||'',t:M.t,s:M.s};
+    const text=JSON.stringify(doc);
+    if(R&&R.fid){ // optimistic lock: the version must still be the one we pulled
+      const f=await dr(env,cfg,DR+'/'+R.fid+'?fields=id,version',{okMissing:true});
+      if(!f)throw new SyncError('The cloud changed while syncing.',{conflict:true});
+      if(String(f.version)!==String(R.ver))throw new SyncError('The cloud changed while syncing.',{conflict:true});
+      const r=await dr(env,cfg,DRU+'/'+R.fid+'?uploadType=media&fields=id,version',{method:'PATCH',headers:{'Content-Type':'application/json'},body:text});return r&&r.version;}
+    const again=await drFind(env,cfg);if(again)throw new SyncError('The cloud changed while syncing.',{conflict:true});
+    const bnd='sinus'+Date.now().toString(36);const meta=JSON.stringify({name:DRN,parents:['appDataFolder'],mimeType:'application/json'});
+    const body='--'+bnd+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+meta+'\r\n--'+bnd+'\r\nContent-Type: application/json\r\n\r\n'+text+'\r\n--'+bnd+'--';
+    const r=await dr(env,cfg,DRU+'?uploadType=multipart&fields=id,version',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+bnd},body});return r&&r.version;}
+  const pullAny=(env,cfg)=>cfg.kind==='drive'?drPull(env,cfg):pull(env,cfg);
+  const pushAny=(env,cfg,M,R,dev,clock,id)=>cfg.kind==='drive'?drPush(env,cfg,M,R,dev,clock,id):push(env,cfg,M,R,dev,clock,id);
   /* One sync: pull → merge → apply locally → push (one commit), retried from the pull on a conflict.
      io: {getLocal()→{s,t}, getBase()→{s,t}|null, apply(M,newBase) (synchronous: save S and base together), setBase(b)} */
   async function syncOnce(env,cfg,io){
     const clock=env.clock;
     for(let attempt=0;attempt<4;attempt++){
-      const R=await pull(env,cfg);
+      const R=await pullAny(env,cfg);
       if(R)Object.values(R.t).forEach(v=>clock.observe(v));
       let B=io.getBase();
       /* an upload whose reply was lost: if the cloud (or its history) carries our id it landed and the
@@ -8879,12 +8918,12 @@ const SY_CORE=(function(){
       if(same){io.setBase({s:M.s,t:M.t});return {pulled:incoming,pushed:false,attempts:attempt+1};}
       const pid=(cfg.dev||'d')+'-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
       io.setBase({s:M.s,t:M.t,pend:{id:pid,prev:R?{s:R.s,t:R.t}:null}});
-      try{await push(env,cfg,M,R,cfg.dev,clock,pid);}
+      try{await pushAny(env,cfg,M,R,cfg.dev,clock,pid);}
       catch(e){if(e.conflict&&attempt<3)continue;throw e;}
       io.setBase({s:M.s,t:M.t});
       return {pulled:incoming,pushed:true,attempts:attempt+1};}
     throw new SyncError('Another device kept changing the cloud. Try again in a moment.',{retryable:true});}
-  return {FILE,LOCAL,canon,eq,clone,mergeState,merge3,safety,localOf,applyTo,Stamper,Clock,SyncError,b64e,b64d,pull,push,syncOnce,explain,DEL};
+  return {FILE,LOCAL,canon,eq,clone,mergeState,merge3,safety,localOf,applyTo,Stamper,Clock,SyncError,b64e,b64d,pull,push,drPull,drPush,syncOnce,explain,DEL};
 })();
 /* SY-CORE-END */
 
@@ -8893,7 +8932,16 @@ const SY_CORE=(function(){
 const SYK='sinus_sync',SYB='sinus_sync_base',SYP='sinus_presync',SY_UNDO_MS=10*60000;
 const syGet=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}};
 const sySet=(k,v)=>{try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){return false;}};
-function syCfg(){const c=syGet(SYK);return c&&c.owner&&c.repo&&c.token?c:null;}
+function syCfg(){const c=syGet(SYK);if(!c)return null;if(c.kind==='drive')return c.client?c:null;return c.owner&&c.repo&&c.token?c:null;}
+/* ---- Google sign-in (Google Identity Services token model; scope: Drive app-data only) ---- */
+const GSCOPE='https://www.googleapis.com/auth/drive.appdata';let gsiLoad=null,gsiClient=null;
+function gsiReady(){if(window.google&&google.accounts&&google.accounts.oauth2)return Promise.resolve();if(gsiLoad)return gsiLoad;
+  gsiLoad=new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='https://accounts.google.com/gsi/client';sc.async=true;sc.onload=()=>res();sc.onerror=()=>{gsiLoad=null;rej(new Error('Could not load Google sign-in (offline, or the network blocks accounts.google.com).'));};document.head.appendChild(sc);});return gsiLoad;}
+function gTok(){const c=syGet(SYK)||{};return c.gtok&&c.gexp&&Date.now()<c.gexp-60000?c.gtok:null;}
+async function gSignIn(interactive){const c=syGet(SYK)||{};if(!c.client)throw new Error('No Google client ID.');await gsiReady();
+  return new Promise((res,rej)=>{try{gsiClient=google.accounts.oauth2.initTokenClient({client_id:c.client,scope:GSCOPE,prompt:'',callback:r=>{if(r&&r.access_token){syUpd({gtok:r.access_token,gexp:Date.now()+(+r.expires_in||3600)*1000});res(r.access_token);}else rej(new Error((r&&r.error_description)||'Google did not return a token.'));},error_callback:e=>rej(new Error(e&&e.type==='popup_closed'?'Sign-in window closed before finishing.':e&&e.type==='popup_failed_to_open'?'The sign-in window was blocked: tap Sync now and allow pop-ups.':'Google sign-in failed.'))});
+    gsiClient.requestAccessToken({prompt:''});}catch(e){rej(e);}});}
+async function gToken(interactive){const t=gTok();if(t)return t;if(!interactive)return null;return gSignIn(true);}
 function syUpd(p){const c=syGet(SYK)||{};Object.assign(c,p);sySet(SYK,c);return c;}
 const syClock=SY_CORE.Clock(()=>Date.now());
 const syStamp=SY_CORE.Stamper();
@@ -8904,7 +8952,7 @@ save=function(){try{if(syStamp.stamp(S,()=>syClock.now())&&syCfg())sySoon();}cat
 let syBusy=false,syTimer=null,syLastRun=0;
 function sySoon(){clearTimeout(syTimer);syTimer=setTimeout(()=>syRun(false),8000);}
 function syFmt(iso){const d=new Date(iso);if(isNaN(d))return '';const p=n=>String(n).padStart(2,'0');return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes());}
-function syEnv(){return {fetch:(u,o)=>fetch(u,o),sleep:ms=>new Promise(r=>setTimeout(r,ms)),clock:syClock};}
+function syEnv(manual){return {fetch:(u,o)=>fetch(u,o),sleep:ms=>new Promise(r=>setTimeout(r,ms)),clock:syClock,token:i=>gToken(manual||i),forget:()=>syUpd({gtok:null,gexp:0})};}
 function syRefreshUi(){try{hud();}catch(e){}
   try{if($('sheet').hidden){if(!$('v-learn').hidden)go('learn',null,true);else if(!$('v-plan').hidden)go('plan',null,true);}}catch(e){}}
 async function syCore(manual){
@@ -8914,7 +8962,7 @@ async function syCore(manual){
   if(navigator.onLine===false){const m='Offline: Sinus will sync when the connection is back.';syUpd({msg:m,ok:false});syPaint();if(manual)toast(m);return {skip:'offline'};}
   syUpd({msg:'Syncing…',busy:true});syPaint();
   try{
-    const r=await SY_CORE.syncOnce(syEnv(),cfg,{
+    const r=await SY_CORE.syncOnce(syEnv(manual),cfg,{
       getLocal:()=>{try{syStamp.stamp(S,()=>syClock.now());}catch(e){}return SY_CORE.localOf(S);},
       getBase:()=>syGet(SYB),
       setBase:b=>{if(!sySet(SYB,b))sySet(SYB,null);},
@@ -8958,8 +9006,20 @@ function syUndo(){
 /* ---------- Settings section ---------- */
 function syHtml(){
   const c=syCfg();const p=syGet(SYP);const canUndo=p&&Date.now()-p.at<SY_UNDO_MS;
-  if(!c){const old=syGet(SYK)||{};
-    return '<div class="eyebrow">Sync across devices</div><p class="note">Keep your progress the same on phone, tablet and PC through a private GitHub repository that only you can see. Nothing is sent anywhere else.</p>'+
+  if(!c){const old=syGet(SYK)||{};const kind=old.kindUi||old.kind||'drive';
+    const pick='<div class="seg sy-kind">'+[['drive','Google Drive'],['github','GitHub']].map(k=>'<button class="tool" data-sykind="'+k[0]+'" aria-pressed="'+(kind===k[0])+'">'+k[1]+'</button>').join('')+'</div>';
+    if(kind==='drive')return '<div class="eyebrow">Sync across devices</div><p class="note">Keep your progress the same on phone, tablet and PC. Choose where the sync file lives: your Google Drive (hidden app folder, nothing visible or shared) or a private GitHub repository.</p>'+pick+
+      '<details class="sy-how"><summary>Google Drive: how to set it up (once, about 5 minutes)</summary><ol class="bul sy-steps">'+
+      '<li>Go to <span class="mono">console.cloud.google.com</span>, sign in, and create a project (any name, e.g. Sinus).</li>'+
+      '<li><b>APIs &amp; Services → Library</b>: search “Google Drive API” and enable it.</li>'+
+      '<li><b>APIs &amp; Services → OAuth consent screen</b>: External, app name “Sinus”, your e-mail twice, save. Under Audience/Test users add your own Google address. (Optional: “Publish app” so the sign-in does not expire every 7 days; the app-data scope needs no verification.)</li>'+
+      '<li><b>Credentials → Create credentials → OAuth client ID → Web application</b>. Authorized JavaScript origins: <span class="mono">https://sinus-ekg.github.io</span>. Create, then copy the <b>Client ID</b> (ends in .apps.googleusercontent.com).</li>'+
+      '<li>Paste the Client ID below and tap <b>Sign in with Google</b>. On each other device, open the installed app → Settings → paste the same Client ID → sign in.</li></ol>'+
+      '<p class="note">Works in the installed app and on the website. In the claude.ai artifact the Google sign-in window cannot open, so use GitHub there if you need it.</p></details>'+
+      '<label class="sy-f"><span>Google OAuth client ID</span><input id="syClient" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="…apps.googleusercontent.com" value="'+esc(old.client||'')+'"></label>'+
+      '<div class="btnrow"><button class="btn" id="syGoog">Sign in with Google and sync</button></div><p class="note sy-msg" id="syMsg" role="status"></p>'+
+      '<p class="note">Sinus only gets access to its own hidden app-data folder in your Drive, never to your files. The sign-in is kept only on this device.</p>';
+    return '<div class="eyebrow">Sync across devices</div><p class="note">Keep your progress the same on phone, tablet and PC through a private GitHub repository that only you can see. Nothing is sent anywhere else.</p>'+pick+
       '<details class="sy-how"><summary>How to set it up (5 minutes, once)</summary><ol class="bul sy-steps">'+
       '<li>Sign in at github.com (a free account is fine).</li>'+
       '<li>Create a new repository named <b class="mono">sinus-data</b>, set to <b>Private</b>. Tick “Add a README”.</li>'+
@@ -8970,8 +9030,9 @@ function syHtml(){
       '<label class="sy-f"><span>Access token</span><input id="syTok" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…"></label>'+
       '<div class="btnrow"><button class="btn" id="syGo">Connect and sync</button></div><p class="note sy-msg" id="syMsg" role="status"></p>'+
       '<p class="note">The token is kept only on this device (not in your backups or progress) and can only touch that one repository.</p>';}
+  const where=c.kind==='drive'?'Google Drive · app-data folder':c.owner+'/'+c.repo;
   return '<div class="eyebrow">Sync across devices</div>'+
-    '<div class="sy-stat"><span class="sy-dot'+(c.busy?' busy':c.ok===false?' bad':c.last?' ok':'')+'"></span><div><b class="mono">'+esc(c.owner+'/'+c.repo)+'</b><br><span class="note">'+(c.last?'Last synced '+esc(syFmt(c.last)):'Not synced yet')+(c.paused?' · auto-sync paused':'')+'</span></div></div>'+
+    '<div class="sy-stat"><span class="sy-dot'+(c.busy?' busy':c.ok===false?' bad':c.last?' ok':'')+'"></span><div><b class="mono">'+esc(where)+'</b><br><span class="note">'+(c.last?'Last synced '+esc(syFmt(c.last)):'Not synced yet')+(c.paused?' · auto-sync paused':'')+'</span></div></div>'+
     '<p class="note sy-msg" id="syMsg" role="status">'+esc(c.msg||'Syncs by itself a few seconds after you practise, when you leave or return to the app, and every 5 minutes.')+'</p>'+
     '<div class="btnrow"><button class="btn" id="syNow"'+(c.busy?' disabled':'')+'>Sync now</button>'+(canUndo?'<button class="tool" id="syUndo">Undo last sync</button>':'')+'<button class="tool" id="syOff">Disconnect</button></div>';}
 function syPaint(){const sec=document.getElementById('sySet');if(!sec)return;sec.innerHTML=syHtml();syWire(sec);}
@@ -8985,10 +9046,18 @@ function syWire(sec){
     if(changed)sySet(SYB,null);
     sySet(SYK,{owner:m[1],repo:m[2],token:tok,dev:prev.dev||('d'+Math.random().toString(36).slice(2,8)),msg:'Connecting…'});
     syPaint();syRun(true);};
+  sec.querySelectorAll('[data-sykind]').forEach(b=>b.onclick=()=>{syUpd({kindUi:b.dataset.sykind});syPaint();});
+  const gg=sec.querySelector('#syGoog');if(gg)gg.onclick=async()=>{const cid=(sec.querySelector('#syClient').value||'').trim();const msg=sec.querySelector('#syMsg');
+    if(!/^[\w-]+\.apps\.googleusercontent\.com$/.test(cid)){msg.textContent='Paste the whole Client ID: it ends in .apps.googleusercontent.com.';return;}
+    const prev=syGet(SYK)||{};if(prev.kind!=='drive'||prev.client!==cid)sySet(SYB,null);
+    sySet(SYK,{kind:'drive',client:cid,dev:prev.dev||('d'+Math.random().toString(36).slice(2,8)),msg:'Opening Google sign-in…'});
+    msg.textContent='Opening Google sign-in…';
+    try{await gSignIn(true);}catch(e){const c=syGet(SYK)||{};sySet(SYK,{kindUi:'drive',client:cid,dev:c.dev});syPaint();const m=(e&&e.message)||'Google sign-in failed.';const mm=sec.querySelector('#syMsg');if(mm)mm.textContent=m;toast(m);return;}
+    syPaint();syRun(true);};
   const n=sec.querySelector('#syNow');if(n)n.onclick=()=>syRun(true);
   const u=sec.querySelector('#syUndo');if(u)u.onclick=syUndo;
   const o=sec.querySelector('#syOff');if(o)o.onclick=e=>{const b=e.currentTarget;if(!b.dataset.sure){b.dataset.sure=1;b.textContent='Tap again to disconnect';return;}
-    const c=syGet(SYK)||{};sySet(SYK,{owner:c.owner,repo:c.repo,dev:c.dev});sySet(SYB,null);sySet(SYP,null);syPaint();toast('Disconnected. The token was removed from this device; your progress here is unchanged.');};
+    const c=syGet(SYK)||{};if(c.kind==='drive'){try{if(c.gtok&&window.google&&google.accounts)google.accounts.oauth2.revoke(c.gtok,()=>{});}catch(e){}sySet(SYK,{kindUi:'drive',client:c.client,dev:c.dev});}else sySet(SYK,{kindUi:'github',owner:c.owner,repo:c.repo,dev:c.dev});sySet(SYB,null);sySet(SYP,null);syPaint();toast('Disconnected. The sign-in was removed from this device; your progress here is unchanged.');};
 }
 function sySettings(){const sb=$('sheetBody');if(!sb||!sb.querySelector('#rstBtn')||sb.querySelector('#sySet'))return;
   const sec=document.createElement('div');sec.className='set-sec';sec.id='sySet';
