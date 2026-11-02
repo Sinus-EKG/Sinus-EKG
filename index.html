@@ -6771,7 +6771,12 @@ function openRecap(range){range=range||'month';const d=recapData(range);
   $('rcText').onclick=()=>{const t='Sinus ECG recap ('+(range==='all'?'all time':range==='week'?'7 days':'30 days')+', '+fmtD(new Date())+'): '+d.n+' ECGs, '+(d.acc==null?'–':d.acc+'%')+' right, '+d.real+' real, can’t-miss '+(d.redAcc==null?'–':d.redAcc+'%')+'. Style: '+d.persona[0]+'.';navigator.clipboard.writeText(t).then(()=>toast('Copied'),()=>toast(t));};
   $('rcShare').onclick=()=>recapImage(d,range);}
 function fmtD(dt){const p=n=>String(n).padStart(2,'0');return p(dt.getDate())+'/'+p(dt.getMonth()+1)+'/'+dt.getFullYear();}
-function recapImage(d,range){const W=1080,H=1920,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+function recapImageBlob(range){const d=recapData(range||'month');const c=recapCanvas(d,range||'month');return new Promise(res=>c.toBlob(b=>res(b),'image/png'));}
+function recapImage(d,range){const c=recapCanvas(d,range);
+  c.toBlob(b=>{if(!b)return;const f=new File([b],'sinus-recap.png',{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:'Sinus ECG recap'}).catch(()=>{});return;}
+    const u=URL.createObjectURL(b);const host=$('rcImg');if(host)host.innerHTML='<p class="note">Long-press (or right-click) the image to save it.</p><img src="'+u+'" alt="Recap image" style="width:100%;max-width:320px;border-radius:14px;display:block">';},'image/png');}
+function recapCanvas(d,range){const W=1080,H=1920,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
   const gr=x.createLinearGradient(0,0,W,H);gr.addColorStop(0,'#ff8a3d');gr.addColorStop(.55,'#e8620c');gr.addColorStop(1,'#8f3205');x.fillStyle=gr;x.fillRect(0,0,W,H);
   x.globalAlpha=.12;x.strokeStyle='#fff';x.lineWidth=2;for(let i=0;i<W;i+=40){x.beginPath();x.moveTo(i,0);x.lineTo(i,H);x.stroke();}for(let j=0;j<H;j+=40){x.beginPath();x.moveTo(0,j);x.lineTo(W,j);x.stroke();}x.globalAlpha=1;
   x.strokeStyle='#fff';x.lineWidth=7;x.lineJoin='round';x.beginPath();const y0=430;const pts=[[0,0],[160,0],[200,-30],[240,0],[300,0],[330,25],[370,-210],[410,90],[450,0],[560,0],[620,-60],[690,0],[1080,0]];pts.forEach(([a,b],i)=>i?x.lineTo(a,y0+b):x.moveTo(a,y0+b));x.stroke();
@@ -6780,9 +6785,7 @@ function recapImage(d,range){const W=1080,H=1920,c=document.createElement('canva
   const tiles=[['ECGs read',d.n],['Accuracy',d.acc==null?'–':d.acc+'%'],['Real ECGs',d.real],['Can’t-miss',d.redAcc==null?'–':d.redAcc+'%'],['Per ECG',d.med==null?'–':d.med+' s'],['Streak',d.streak+' d']];
   tiles.forEach((t,i)=>{const cx=80+(i%2)*470,cy=880+Math.floor(i/2)*250;x.fillStyle='rgba(255,255,255,.14)';x.beginPath();x.roundRect?x.roundRect(cx,cy,440,220,28):x.rect(cx,cy,440,220);x.fill();x.fillStyle='#fff';x.font='600 30px "IBM Plex Mono", monospace';x.globalAlpha=.85;x.fillText(t[0].toUpperCase(),cx+34,cy+62);x.globalAlpha=1;x.font='800 92px Archivo, system-ui, sans-serif';x.fillText(String(t[1]),cx+34,cy+170);});
   x.font='500 36px "IBM Plex Sans", system-ui, sans-serif';if(d.best)x.fillText('Strongest: '+PAT[d.best].name,80,1690);if(d.worst)x.fillText('Working on: '+PAT[d.worst].name,80,1750);
-  c.toBlob(b=>{if(!b)return;const f=new File([b],'sinus-recap.png',{type:'image/png'});
-    if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:'Sinus ECG recap'}).catch(()=>{});return;}
-    const u=URL.createObjectURL(b);const host=$('rcImg');if(host)host.innerHTML='<p class="note">Long-press (or right-click) the image to save it.</p><img src="'+u+'" alt="Recap image" style="width:100%;max-width:320px;border-radius:14px;display:block">';},'image/png');}
+  return c;}
 
 /* ---------- Full view: landscape, edge to edge, rotates on phones ---------- */
 let FV=null;
@@ -9115,6 +9118,48 @@ const _syHtml=syHtml;syHtml=function(){const h=_syHtml();const c=syCfg();if(!c||
   return h+'<div class="sy-hub"><b>Citrus Maxima</b><span class="note">'+esc(s.msg||'Sinus shares a one-line status (what is due, minutes needed, streak) with your scheduler through Drive → Citrus Maxima / Apps / Sinus.status.json. Nothing else.')+'</span><div class="btnrow"><button class="tool sm" id="hubNow">Share now</button></div></div>';};
 const _syWire=syWire;syWire=function(sec){_syWire(sec);const b=sec.querySelector('#hubNow');if(b)b.onclick=async()=>{if(!gTok()){try{await gSignIn(true);}catch(e){toast(e.message);return;}}hubSet({fp:''});hubWrite(true);toast('Sharing with Citrus…');};};
 window.SINUS_HUB={status:hubStatus,write:()=>hubWrite(true)};
+
+/* ================= DRIVE BACKUP (visible folder Citrus Maxima/Sinus): casebook PDF, monthly answers CSV, recap image ================= */
+const BK={folder:'Sinus',busy:false};
+const bkGet=()=>syGet('sinus_bk')||{};const bkSet=p=>sySet('sinus_bk',Object.assign(bkGet(),p));
+async function bkFolder(){const h=bkGet();if(h.dir)return h.dir;const root=await hubFolder(HUB.root,'root');const dir=await hubFolder(BK.folder,root);bkSet({dir});return dir;}
+async function bkFind(name,dir){const q="name='"+name.replace(/'/g,"\\'")+"' and '"+dir+"' in parents and trashed=false";const j=await hubFetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id,size,modifiedTime)');return j.files&&j.files[0]||null;}
+async function bkUpload(name,blob,mime,dir,fid){const meta=JSON.stringify(fid?{name}:{name,parents:[dir],mimeType:mime});const bnd='sinusbk'+Date.now().toString(36);
+  const head='--'+bnd+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+meta+'\r\n--'+bnd+'\r\nContent-Type: '+mime+'\r\n\r\n';
+  const body=new Blob([head,blob,'\r\n--'+bnd+'--']);
+  return hubFetch('https://www.googleapis.com/upload/drive/v3/files'+(fid?'/'+fid:'')+'?uploadType=multipart&fields=id,size',{method:fid?'PATCH':'POST',headers:{'Content-Type':'multipart/related; boundary='+bnd},body});}
+async function bkWithRetry(fn){try{return await fn();}catch(e){if(/drive 404/.test(e.message)){bkSet({dir:null});return fn();}throw e;}}
+/* --- casebook PDF: upload once per file (size+name), download on a device that has none --- */
+async function bkCasebookUp(blob){if(!blob)return;const sig=(blob.name||'casebook.pdf')+':'+blob.size;if(bkGet().pdfSig===sig)return;
+  await bkWithRetry(async()=>{const dir=await bkFolder();const f=await bkFind('casebook.pdf',dir);if(f&&+f.size===blob.size){bkSet({pdfSig:sig,pdfId:f.id});return;}
+    const r=await bkUpload('casebook.pdf',blob,'application/pdf',dir,f&&f.id);bkSet({pdfSig:sig,pdfId:r.id});});}
+async function bkCasebookDown(){const dir=await bkFolder();const f=await bkFind('casebook.pdf',dir);if(!f)return null;const tok=await gToken(false);if(!tok)return null;
+  const r=await fetch('https://www.googleapis.com/drive/v3/files/'+f.id+'?alt=media',{headers:{'Authorization':'Bearer '+tok}});if(!r.ok)return null;const b=await r.blob();const file=new File([b],'casebook.pdf',{type:'application/pdf'});bkSet({pdfSig:'casebook.pdf:'+file.size,pdfId:f.id});return file;}
+{const _put=idbPut;idbPut=async function(blob){const ok=await _put(blob);try{if(gTok())bkCasebookUp(blob).catch(()=>{});}catch(e){}return ok;};}
+{const _init=initCasebook;initCasebook=function(){_init();
+  setTimeout(async()=>{try{if(CB.doc||!gTok())return;const have=await idbGet();if(have)return;const st=$('cbStatus');if(st)st.textContent='Looking for your casebook in Drive…';const f=await bkCasebookDown();
+    if(f){if(st)st.textContent='Found your casebook in Drive: opening…';await cbOpen(f,true);}else if(st&&/Drive/.test(st.textContent))st.textContent='';}catch(e){}},1200);};}
+/* --- monthly answers CSV + recap image: written at most once a day, when the month's log changed --- */
+function bkCsv(month){const rows=(mxS().log||[]).filter(r=>new Date(r[0]).toISOString().slice(0,7)===month);const src={s:'daily session',r:'reading room',x:'structured read',e:'level exam'};
+  const esc=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';const p=n=>String(n).padStart(2,'0');
+  const lines=['date,time,pattern,name,correct,seconds,real,source,confidence,danger'];
+  rows.forEach(r=>{const d=new Date(r[0]);const id=r[1]||'';lines.push([p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear(),p(d.getHours())+':'+p(d.getMinutes()),id,esc(PAT[id]?PAT[id].name:''),r[2]?1:0,Math.round((r[3]||0)/1000),r[4]?1:0,src[r[5]]||r[5]||'',r[6]||'',id&&PAT[id]?dangerOf(id):''].join(','));});
+  return {text:lines.join('\n'),n:rows.length};}
+async function bkReports(force){if(!gTok()||navigator.onLine===false||BK.busy)return;const h=bkGet();if(!force&&Date.now()-(h.repAt||0)<24*3600000)return;BK.busy=true;
+  try{const month=new Date().toISOString().slice(0,7);const c=bkCsv(month);const sig=month+':'+c.n;
+    if(force||h.csvSig!==sig){await bkWithRetry(async()=>{const dir=await bkFolder();const name='Sinus answers '+month+'.csv';const f=await bkFind(name,dir);await bkUpload(name,new Blob([c.text],{type:'text/csv'}),'text/csv',dir,f&&f.id);});bkSet({csvSig:sig});}
+    // recap image for the month (same drawing as Share as image)
+    if(typeof recapImageBlob==='function'){const b=await recapImageBlob('month');if(b)await bkWithRetry(async()=>{const dir=await bkFolder();const name='Sinus recap '+month+'.png';const f=await bkFind(name,dir);await bkUpload(name,b,'image/png',dir,f&&f.id);});}
+    bkSet({repAt:Date.now(),ok:true,msg:'Backed up '+syFmt(new Date().toISOString())+': answers CSV'+(c.n?' ('+c.n+' this month)':'')+' and recap'+(h.pdfId?', casebook PDF':'')+'.'});}
+  catch(e){bkSet({ok:false,msg:e.message==='nosignin'?'Sign in to Google (Sync now) to back up.':'Backup could not write to Drive ('+e.message+').'});}
+  finally{BK.busy=false;syPaint();}}
+setTimeout(()=>bkReports(false),12000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>bkReports(false),4000);});
+/* --- Settings line --- */
+{const _h=syHtml;syHtml=function(){const h=_h();const c=syCfg();if(!c||c.kind!=='drive')return h;const s=bkGet();
+  return h+'<div class="sy-hub"><b>Backups in your Drive</b><span class="note">'+esc(s.msg||'Once a day Sinus writes readable copies to Drive → Citrus Maxima / Sinus: this month’s answers as a CSV, the recap image, and your casebook PDF (so a new device can fetch it).')+'</span><div class="btnrow"><button class="tool sm" id="bkNow">Back up now</button></div></div>';};
+ const _w=syWire;syWire=function(sec){_w(sec);const b=sec.querySelector('#bkNow');if(b)b.onclick=async()=>{if(!gTok()){try{await gSignIn(true);}catch(e){toast(e.message);return;}}toast('Backing up…');try{const pdf=await idbGet();if(pdf)await bkCasebookUp(pdf);}catch(e){}bkReports(true);};};}
+window.SINUS_BACKUP={csv:bkCsv,run:()=>bkReports(true),pdfUp:bkCasebookUp,pdfDown:bkCasebookDown};
 
 })();
 /* KIT-END */
