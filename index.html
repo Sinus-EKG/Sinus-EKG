@@ -11272,20 +11272,16 @@ function syUndo(){
   syPaint();syRefreshUi();toast('Last sync undone. Auto-sync paused.');}
 
 /* ---------- Settings section ---------- */
+const SY_GCLIENT='753489712404-ra7ahu34gjl305b4ss1765idmqg7am5s.apps.googleusercontent.com';
 function syHtml(){
   const c=syCfg();const p=syGet(SYP);const canUndo=p&&Date.now()-p.at<SY_UNDO_MS;
   if(!c){const old=syGet(SYK)||{};const kind=old.kindUi||old.kind||'drive';
     const pick='<div class="seg sy-kind">'+[['drive','Google Drive'],['github','GitHub']].map(k=>'<button class="tool" data-sykind="'+k[0]+'" aria-pressed="'+(kind===k[0])+'">'+k[1]+'</button>').join('')+'</div>';
     if(kind==='drive')return '<div class="eyebrow">Sync across devices</div><p class="note">Keep your progress the same on phone, tablet and PC. Choose where the sync file lives: your Google Drive (hidden app folder, nothing visible or shared) or a private GitHub repository.</p>'+pick+
-      '<details class="sy-how"><summary>Google Drive: how to set it up (once, about 5 minutes)</summary><ol class="bul sy-steps">'+
-      '<li>Go to <span class="mono">console.cloud.google.com</span>, sign in, and create a project (any name, e.g. Sinus).</li>'+
-      '<li><b>APIs &amp; Services → Library</b>: search “Google Drive API” and enable it.</li>'+
-      '<li><b>APIs &amp; Services → OAuth consent screen</b>: External, app name “Sinus”, your e-mail twice, save. Under Audience/Test users add your own Google address. (Optional: “Publish app” so the sign-in does not expire every 7 days; the app-data scope needs no verification.)</li>'+
-      '<li><b>Credentials → Create credentials → OAuth client ID → Web application</b>. Authorized JavaScript origins: <span class="mono">https://sinus-ekg.github.io</span>. Create, then copy the <b>Client ID</b> (ends in .apps.googleusercontent.com).</li>'+
-      '<li>Already set up Citrus Maxima, Yuzu or Orange? Use the same Client ID (one Cloud project for all your apps): just make sure <span class="mono">https://sinus-ekg.github.io</span> is in that client’s authorised JavaScript origins.</li><li>Paste the Client ID below and tap <b>Sign in with Google</b>. On each other device, open the installed app → Settings → paste the same Client ID → sign in.</li></ol>'+
-      '<p class="note">Works in the installed app and on the website. In the claude.ai artifact the Google sign-in window cannot open, so use GitHub there if you need it.</p></details>'+
-      '<label class="sy-f"><span>Google OAuth client ID</span><input id="syClient" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="…apps.googleusercontent.com" value="'+esc(old.client||'')+'"></label>'+
-      '<div class="btnrow"><button class="btn" id="syGoog">Sign in with Google and sync</button></div><p class="note sy-msg" id="syMsg" role="status"></p>'+
+      '<p class="note">One tap: sign in with your Google account and Sinus syncs through your Drive, with the same Google project as Citrus, Orange and Yuzu. Do the same on each device.</p>'+
+      (/claude\.ai|claudeusercontent/.test(location.hostname)?'<p class="note"><b>Here in claude.ai the Google window cannot open.</b> Use the installed app (sinus-ekg.github.io/Sinus-EKG) for Drive, or GitHub below.</p>':'')+
+      '<details class="sy-how"><summary>Advanced: use a different Google client ID</summary><label class="sy-f"><span>Google OAuth client ID</span><input id="syClient" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="…apps.googleusercontent.com" value="'+esc(old.client||SY_GCLIENT)+'"></label><p class="note">Leave as is unless you made your own. It must list <span class="mono">https://sinus-ekg.github.io</span> in its authorised JavaScript origins.</p></details>'+
+      '<div class="btnrow"><button class="btn" id="syGoog">Sign in with Google</button></div><p class="note sy-msg" id="syMsg" role="status"></p>'+
       '<p class="note">Sinus can only see files it created itself (its hidden app-data folder and the status file for Citrus Maxima), never your other files. The sign-in is kept only on this device.</p>';
     return '<div class="eyebrow">Sync across devices</div><p class="note">Keep your progress the same on phone, tablet and PC through a private GitHub repository that only you can see. Nothing is sent anywhere else.</p>'+pick+
       '<details class="sy-how"><summary>How to set it up (5 minutes, once)</summary><ol class="bul sy-steps">'+
@@ -11315,7 +11311,7 @@ function syWire(sec){
     sySet(SYK,{owner:m[1],repo:m[2],token:tok,dev:prev.dev||('d'+Math.random().toString(36).slice(2,8)),msg:'Connecting…'});
     syPaint();syRun(true);};
   sec.querySelectorAll('[data-sykind]').forEach(b=>b.onclick=()=>{syUpd({kindUi:b.dataset.sykind});syPaint();});
-  const gg=sec.querySelector('#syGoog');if(gg)gg.onclick=async()=>{const cid=(sec.querySelector('#syClient').value||'').trim();const msg=sec.querySelector('#syMsg');
+  const gg=sec.querySelector('#syGoog');if(gg)gg.onclick=async()=>{const ci=sec.querySelector('#syClient');const cid=((ci&&ci.value)||'').trim()||SY_GCLIENT;const msg=sec.querySelector('#syMsg');
     if(!/^[\w-]+\.apps\.googleusercontent\.com$/.test(cid)){msg.textContent='Paste the whole Client ID: it ends in .apps.googleusercontent.com.';return;}
     const prev=syGet(SYK)||{};if(prev.kind!=='drive'||prev.client!==cid)sySet(SYB,null);
     sySet(SYK,{kind:'drive',client:cid,dev:prev.dev||('d'+Math.random().toString(36).slice(2,8)),msg:'Opening Google sign-in…'});
