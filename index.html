@@ -736,6 +736,14 @@ body.bt-rd #cPrev,body.bt-rd #cNext,body.bt-rd .pager{display:none!important}
 html.night:root,html:root.px{--accent-fill:var(--accent)}
 .btn:not(.ghost){background:var(--accent-fill,var(--accent))}
 html{scroll-padding-bottom:96px}
+/* cleanup batch 1 (12/11/2026) */
+.dd-lab{display:inline-block;margin-left:8px;font-size:13px;font-weight:600;color:var(--muted,#6b6b6b);font-variant-numeric:tabular-nums}
+.skip-link{position:fixed;left:12px;top:-60px;z-index:200;background:var(--accent-fill,#c2510b);color:#fff;padding:10px 16px;border-radius:8px;font-weight:700;text-decoration:none;transition:top .15s}
+.skip-link:focus{top:10px;outline:3px solid #fff;box-shadow:0 0 0 5px var(--accent-fill,#c2510b)}
+main.wrap:focus{outline:none}
+@media (max-width:380px){.rd-bar{gap:4px;padding-top:6px;padding-bottom:6px}.rd-bar .btn,.rd-bar .tool{padding:6px 10px;font-size:13px;min-height:36px}.rd-bar .note{display:none}}
+@media (min-width:1600px){.wrap{max-width:1480px}#qViewer,.bossopts{max-width:none}}
+@media (min-width:1600px){.hero{padding-left:32px;padding-right:32px}}
 
 /* ================= PIXEL LOOK (the installed app; same 8-bit kit as Orange and Yuzu) =================
    Console palette, square corners with a one-pixel notch, bevelled panels and buttons, "Orange Pixel"
@@ -1323,6 +1331,9 @@ html.px .gl-hook{border-left-width:6px;font-family:var(--f-px);font-weight:400;f
 html.px .gl-w{border-style:solid;border-width:2px}
 html.px .gl-h,html.px .gl-stats .gl-stat b,html.px .gl-hrow .gl-stat b,html.px .gl-prompt p{font-family:var(--f-px);font-weight:400;letter-spacing:0;-webkit-font-smoothing:none}
 html.px .gl-in-l,html.px .gl-in-r{animation:none}
+
+.gl-conf{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.02em;border:1px solid var(--line);color:var(--muted,#6b6b6b);vertical-align:middle}
+.gl-conf.ap{border-color:#c2510b;color:#c2510b}
 
 /* ===== Concept web (cw) ===== */
 .card.cw{gap:12px}
@@ -9397,8 +9408,10 @@ function gl_split(s){s=String(s||'');const m=s.match(/\s[—–-]\s|\s—|—\s/
 function gl_list(arr,cls){if(!Array.isArray(arr)||!arr.length)return '<p class="note">Nothing written for this one yet.</p>';
   return '<ul class="gl-ql '+(cls||'')+'">'+arr.map(x=>{const [q,w]=gl_split(x);return '<li><b>'+esc(q)+'</b>'+(w?'<span class="gl-why">— '+esc(w)+'</span>':'')+'</li>';}).join('')+'</ul>';}
 function gl_para(s){s=String(s||'').trim();if(!s)return '<p class="note">Nothing written for this one yet.</p>';return s.split(/\n+/).map(x=>'<p>'+esc(x)+'</p>').join('');}
+function gl_conf(r){try{const t=(r.stat||'')+' '+(r.claim||'');const ap=/[~≈]|\bapprox|\babout\b|\broughly\b|\bsome\b|\bup to\b|\bmost\b|\busually\b/i.test(t)||!(r.source||'').trim();
+  return ap?' <span class="gl-conf ap" data-hint="Approximate or textbook-level figure: check the source before quoting it.">approx.</span>':' <span class="gl-conf" data-hint="A specific figure with a named source. Source not re-checked in this build.">cited</span>';}catch(e){return '';}}
 function gl_evTable(rows,withPat){if(!Array.isArray(rows)||!rows.length)return '<p class="note">No validated number is well known for this pattern: use the qualitative teaching and your clinical judgement.</p>';
-  return '<div class="gl-evw"><table class="gl-ev"><thead><tr><th>Claim</th><th>Stat</th><th>Source</th>'+(withPat?'<th></th>':'')+'</tr></thead><tbody>'+rows.map(r=>'<tr><td>'+esc(r.claim||'')+'</td><td class="gl-sv" data-hint="'+esc(GL_STAT_HINT)+'">'+esc(r.stat||'')+'</td><td class="gl-src">'+esc(r.source||'')+'</td>'+(withPat?'<td>'+(r.pat&&PAT[r.pat]?'<button class="tool sm" data-l="'+esc(r.pat)+'">'+esc(PAT[r.pat].name)+' →</button>':'')+'</td>':'')+'</tr>').join('')+'</tbody></table></div>';}
+  return '<div class="gl-evw"><table class="gl-ev"><thead><tr><th>Claim</th><th>Stat</th><th>Source</th>'+(withPat?'<th></th>':'')+'</tr></thead><tbody>'+rows.map(r=>'<tr><td>'+esc(r.claim||'')+'</td><td class="gl-sv" data-hint="'+esc(GL_STAT_HINT)+'">'+esc(r.stat||'')+gl_conf(r)+'</td><td class="gl-src">'+esc(r.source||'')+'</td>'+(withPat?'<td>'+(r.pat&&PAT[r.pat]?'<button class="tool sm" data-l="'+esc(r.pat)+'">'+esc(PAT[r.pat].name)+' →</button>':'')+'</td>':'')+'</tr>').join('')+'</tbody></table></div>';}
 /* one angle → HTML */
 function gl_angleHtml(id,k){const G=gl_get(id)||{};
   if(k==='askex')return '<div class="gl-two"><div><div class="eyebrow">Ask · and why</div>'+gl_list(G.ask)+'</div><div><div class="eyebrow">Examine · and why</div>'+gl_list(G.exam)+'</div></div>';
@@ -10613,7 +10626,7 @@ document.addEventListener('click',e=>{let b;if(b=e.target.closest('[data-rd-less
 /* hooks: quiz and daily session */
 try{const _rdAns=answer;answer=function(id,btn){const p=Q.cur,RR=Q.realRec,was=Q.answered,ex=!!Q.exam;_rdAns(id,btn);
   try{if(was||!Q.answered||!p)return;const ok=RR?RR.pats.includes(id):id===p.id;
-    if(rdActive()){const r=rdR();const L=RD_LEGS[r.leg];if(L&&(L.id==='due'||L.id==='mix')){r.qa=r.qa||[0,0];r.qa[0]++;if(ok)r.qa[1]++;rdBump(L.id);}}
+    if(rdActive()){const r=rdR();const L=RD_LEGS[r.leg];if(L&&(L.id==='due'||L.id==='mix')){r.qa=r.qa||[0,0];r.qa[0]++;if(ok)r.qa[1]++;try{const lg=mxS().log;lg.push([rdNow(),p.id,ok?1:0,0,RR?1:0,'q','']);if(lg.length>5000)mxS().log=lg.slice(-5000);}catch(e2){}rdBump(L.id);}}
     if(!ok&&!ex)rdInjectWhy($('qFb'),p.id);}catch(e){}};}catch(e){}
 try{const _rdMx=mxAnswer;mxAnswer=function(id,btn){const it=MX.items[MX.i],was=MX.ans,mode=MX.mode;_rdMx(id,btn);
   try{if(was||!it||it.kind==='know'||!MX.ans||mode==='bench')return;const ok=!!id&&(it.ok||[]).includes(id);if(!ok)rdInjectWhy($('mxFb'),it.primary||it.id||'');}catch(e){}};}catch(e){}
@@ -11018,6 +11031,37 @@ let bt_shownAt=0;
 {const _m2=mxAnswer;mxAnswer=function(){if(Date.now()-bt_shownAt<350)return;return _m2.apply(this,arguments);};}
 /* 6. Close any bottom sheet when the page changes. */
 {const _g2=goInner;goInner=function(){try{kitClose();}catch(e){}return _g2.apply(this,arguments);};}
+/* ================= CLEANUP BATCH 1 (12/11/2026) ================= */
+/* 7. Dates read dd/mm/yyyy everywhere: en-GB hint for the native picker plus a visible dd/mm/yyyy label that follows the value. */
+function bt_ddLab(inp){try{if(!inp||inp.__dd)return;inp.__dd=1;inp.setAttribute('lang','en-GB');const sp=document.createElement('span');sp.className='dd-lab';sp.setAttribute('aria-hidden','true');
+  const f=()=>{const v=inp.value||'';sp.textContent=/^\d{4}-\d\d-\d\d$/.test(v)?v.slice(8,10)+'/'+v.slice(5,7)+'/'+v.slice(0,4):'dd/mm/yyyy';};
+  f();inp.addEventListener('input',f);inp.addEventListener('change',f);inp.after(sp);}catch(e){}}
+function bt_ddScan(root){try{(root||document).querySelectorAll('input[type=date]').forEach(bt_ddLab);}catch(e){}}
+new MutationObserver(m=>{for(const x of m){for(const n of x.addedNodes){if(n.nodeType!==1)continue;if(n.matches&&n.matches('input[type=date]'))bt_ddLab(n);else if(n.querySelectorAll)bt_ddScan(n);}}}).observe(document.body,{childList:true,subtree:true});
+bt_ddScan();
+/* 8. Skip to content (keyboard and screen-reader users). */
+try{const mn=document.querySelector('main.wrap');if(mn){mn.id=mn.id||'main';mn.setAttribute('tabindex','-1');const a=document.createElement('a');a.className='skip-link';a.href='#main';a.textContent='Skip to content';
+  a.addEventListener('click',e=>{e.preventDefault();mn.focus({preventScroll:false});mn.scrollIntoView();});document.body.prepend(a);}}catch(e){}
+/* 9. "?" sheet: add the keys of the page you are on. */
+const BT_KEYS={
+  normalornot:[['N / A','Normal / abnormal'],['Enter','Next']],
+  gestalt:[['1–4','Pick an answer'],['Enter or Space','Next']],
+  spotdiff:[['1–4','Pick an answer'],['Enter or Space','Next']],
+  cases:[['1–4','Pick an answer'],['Enter or Space','Next step']],
+  calipers:[['Enter','Lock the measurement / next']],
+  round:[['Enter','Lock the estimate / next'],['← →  ↑ ↓','Nudge the estimate (hold Shift for ×5)']],
+  glue:[['← →','Previous / next angle card'],['Ctrl or Shift + Enter','Reveal while typing in the answer box'],['Enter','Reveal / next']],
+  leadhunt:[['1–4','Pick a lead'],['Enter','Check / next']],
+  rhythmtap:[['Space or Enter','Tap on each beat']],
+  flash:[['1–4','Pick an answer'],['Enter','Next']],
+  web:[['Esc','Clear selection'],['Ctrl + wheel','Zoom']]};
+document.addEventListener('keydown',e=>{if(e.key!=='?'||e.target.matches('input,select,textarea'))return;
+  setTimeout(()=>{try{const sh=$('sheetBody');if(!sh||$('sheet').hidden||sh.querySelector('.bt-keys'))return;const cv=$('v-concept');const id=(cv&&!cv.hidden)?curConcept:null;const rows=id&&BT_KEYS[id];if(!rows)return;
+    const ul=sh.querySelector('ul.bul');if(!ul)return;const d=document.createElement('div');d.className='bt-keys';d.innerHTML='<h3 style="font-size:15px;margin:14px 0 6px">On this page</h3><ul class="bul">'+rows.map(r=>'<li><b>'+esc(r[0])+'</b> '+esc(r[1])+'</li>').join('')+'</ul>';ul.after(d);}catch(er){}},60);});
+/* 10. Leaving a boss fight or a level exam half-way says so. */
+{const _g3=goInner;goInner=function(v,arg){try{const cv=$('v-concept');if(cv&&!cv.hidden&&(v!=='concept'||(arg&&arg!==curConcept))){
+  if(typeof RD_B!=='undefined'&&RD_B&&RD_B.timer&&RD_B.host&&RD_B.host.isConnected){clearInterval(RD_B.timer);RD_B.timer=null;toast('Boss fight left unfinished: it did not count.');}
+  else if(typeof CE!=='undefined'&&CE&&!CE.done&&document.querySelector('.cu-exam')){try{cuStop();}catch(e2){}toast('Level exam left unfinished: it did not count.');}}}catch(e){}return _g3.apply(this,arguments);};}
 
 /* ===== Device sync through a private GitHub repo (owner: part-sync.js) =====
    One file, sinus/state.json, via the GitHub Contents API. Three-way merge per S key against the
