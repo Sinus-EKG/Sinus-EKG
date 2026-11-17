@@ -3,7 +3,7 @@
    cache:'no-cache' so a file the page has just downloaded is revalidated (304) instead of downloaded again;
    every handler returns a Response, also offline. The page reloads on controllerchange only if it was already
    controlled (an update), never on the first visit (part-kit.js). */
-const VER='93aaab62b19d';
+const VER='f7563dd989c7';
 const SHELL='sinus-shell-'+VER, REALC='sinus-real-v1', FONTS='sinus-fonts-v1';
 const PRE=["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-180.png", "icons/favicon-32.png", "real/index.json"];
 const ALIAS={'./':'index.html'};   /* key → file it is stored from (one fetch, two cache keys) */

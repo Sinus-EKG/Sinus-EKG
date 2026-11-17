@@ -8142,7 +8142,7 @@ function openSettings(){const u=uiS();const kb=storeKB();const errs=(S.errs||[])
   $('rstBtn').addEventListener('click',e=>{const b=e.currentTarget;if(!b.dataset.sure){b.dataset.sure=1;b.textContent='Tap again to erase everything (copy a backup first)';return;}save.blocked=true;try{Object.keys(localStorage).filter(k=>/^(sinus|kit_)/i.test(k)||k===KEY).forEach(k=>localStorage.removeItem(k));}catch(x){}try{indexedDB.deleteDatabase&&['sinus','sinus-casebook','sinusCB','sinus-photos'].forEach(n=>indexedDB.deleteDatabase(n));}catch(x){}location.reload();});}
 function redrawAll(){try{[lv,qv,mv,labv].forEach(v=>v&&v.redraw());}catch(e){}}
 /* ---- stability ---- */
-const APPVER='2026.11.13';
+const APPVER='2026.11.17';
 function migrate(){const obj=v=>v&&typeof v==='object'&&!Array.isArray(v);if(!obj(S))S={};S.v=S.v||1;['stats','studied','srs'].forEach(k=>{if(!obj(S[k]))S[k]={};Object.keys(S[k]).forEach(id=>{const e=S[k][id];if(k==='studied'?e==null:!obj(e))delete S[k][id];});});Object.keys(S.stats).forEach(id=>{const e=S.stats[id];e.n=+e.n||0;e.c=+e.c||0;});Object.keys(S.srs).forEach(id=>{const e=S.srs[id];e.due=+e.due||0;});if(!obj(S.meas))S.meas={n:0,c:0};['xp','best','streak'].forEach(k=>{S[k]=Math.max(0,Math.round(+S[k]||0));});['mx','exams','cal','glue','round','tools','labs','play','est','teach','why','badges','ui'].forEach(k=>{if(k in S&&!obj(S[k]))delete S[k];});if(S.days&&!Array.isArray(S.days))S.days=[];if(S.v<2){S.v=2;}stFix(S);}
 /* stFix(o): type-check the deeper parts of a state object, repair in place, return the list of problems found (WP04).
    migrate() repairs silently; the backup restore (#bkGo) refuses a backup that has any problem. */
@@ -15296,7 +15296,7 @@ function syHtml(){
       (SY_GOK?'':'<p class="note"><b>Google sign-in only works in the Sinus app.</b> This copy runs inside claude.ai, which blocks Google’s sign-in window. Open the app (and install it from there), sign in once, and your progress syncs to every device. Here you can use GitHub instead.</p>')+
       '<details class="sy-how"><summary>Advanced: use a different Google client ID</summary><label class="sy-f"><span>Google OAuth client ID</span><input id="syClient" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="…apps.googleusercontent.com" value="'+esc(old.client||SY_GCLIENT)+'"></label><p class="note">Leave as is unless you made your own. It must list <span class="mono">https://sinus-ekg.github.io</span> in its authorised JavaScript origins.</p></details>'+
       (SY_GOK?'<div class="btnrow"><button class="btn" id="syGoog">Sign in with Google</button></div>':'<div class="btnrow"><a class="btn" href="https://sinus-ekg.github.io/Sinus-EKG/" target="_blank" rel="noopener">Open the Sinus app</a></div>')+'<p class="note sy-msg" id="syMsg" role="status"></p>'+
-      '<p class="note">Google permissions Sinus asks for: its hidden app-data folder (the sync file) and only the files and folders Sinus creates itself (Drive → My Apps / hub / sinus: the status for Citrus Maxima and readable backups). It cannot list, open or read any of your other Drive files. The sign-in is kept only on this device.</p>';
+      '<p class="note">Google permissions Sinus asks for: its hidden app-data folder (the sync file) and only the files and folders Sinus creates itself (your Sinus folder in Drive (Citrus › Learning › Medicine › ECG - Sinus once Citrus Maxima organises Drive; until then My Apps / hub / sinus): the status for Citrus Maxima and readable backups). It cannot list, open or read any of your other Drive files. The sign-in is kept only on this device.</p>';
     return '<div class="eyebrow">Sync across devices</div><p class="note">Keep your progress the same on phone, tablet and PC through a private GitHub repository that only you can see. Nothing is sent anywhere else.</p>'+pick+
       '<details class="sy-how"><summary>How to set it up (5 minutes, once)</summary><ol class="bul sy-steps">'+
       '<li>Sign in at github.com (a free account is fine).</li>'+
@@ -15346,7 +15346,7 @@ const syOpenSheet=openSheet;
 openSheet=function(html){syOpenSheet(html);try{Promise.resolve().then(()=>{try{sySettings();}catch(e){}});}catch(e){}};
 
 /* ================= CITRUS HUB: Sinus tells the scheduler (Citrus Maxima) what it needs today ================= */
-/* Writes <Drive>/My Apps/hub/sinus/status.json (the shape the scheduler reads) after each practice, at most every 5 min.
+/* Writes status.json into the Sinus Drive folder (found by tag citrusApp=sinus; was My Apps/hub/sinus) (the shape the scheduler reads) after each practice, at most every 5 min.
    Uses the same Google sign-in as Drive sync (one shared Client ID from the Citrus Cloud project). */
 const HUB={root:'My Apps',file:'status.json',url:'https://sinus-ekg.github.io/Sinus-EKG/',last:0,fp:'',timer:null};
 const hubGet=()=>{const h=syGet('sinus_hub')||{};if(h.layout!==2){sySet('sinus_hub',{layout:2});try{const b=syGet('sinus_bk')||{};if(b.dir){delete b.dir;sySet('sinus_bk',b);}}catch(e){}return {layout:2};}return h;};const hubSet=p=>sySet('sinus_hub',Object.assign(hubGet(),p));
@@ -15363,6 +15363,7 @@ function hubStatus(){const today=dkey();const mx=S.mx&&S.mx.start?S.mx:null;cons
     today:{date:today,done:sessDone,items:todayAns?[{title:'ECGs read',count:todayAns}]:[]},
     asks:est?[{date:today,title:'Sinus: '+(sessDone?'review':'daily ECG session'),minutes:est,slot:night?'postnight':'free'}]:[],
     pending:[].concat(due?['Review '+due+' due pattern'+(due>1?'s':'')]:[],misses?['Revisit '+misses+' missed real ECG'+(misses>1?'s':'')]:[]),
+    drive:{byTag:true},
     extra:{planWeek:week,level:lv,realRead:rm.n||0,nightShift:night}};}
 async function hubFetch(url,o){const tok=await gToken(false);if(!tok)throw new Error('nosignin');const r=await fetch(url,Object.assign({cache:'no-store'},o,{headers:Object.assign({'Authorization':'Bearer '+tok},(o&&o.headers)||{})}));
   if(r.status===401){syUpd({gtok:null,gexp:0});throw new Error('nosignin');}if(!r.ok)throw new Error('drive '+r.status);return (o&&o.blob)?r.blob():r.status===204?null:r.json();}
@@ -15378,16 +15379,26 @@ const HUB_FOLDER='application/vnd.google-apps.folder',HUB_FILES='https://www.goo
 async function hubFind(q){const j=await hubFetch(HUB_FILES+'?q='+encodeURIComponent(q+" and mimeType='"+HUB_FOLDER+"' and trashed=false")+'&orderBy=createdTime&fields=files(id,name)');return (j&&j.files&&j.files[0])||null;}
 const hubNameQ=(name,parent)=>"name='"+name.replace(/'/g,"\\'")+"'"+(parent?" and '"+parent+"' in parents":'');
 async function hubMk(name,parent,props){const c=await hubFetch(HUB_FILES+'?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({name,mimeType:HUB_FOLDER,parents:[parent]},props?{appProperties:props}:{}))});return c.id;}
-async function hubTree(){const h=hubGet();if(h.apps)return h.apps;
-  let dir=await hubFind("appProperties has { key='sinus' and value='hubdir' }");
-  if(!dir){dir=await hubFind(hubNameQ('sinus'));
-    if(dir){try{await hubFetch(HUB_FILES+'/'+dir.id+'?fields=id',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({appProperties:{sinus:'hubdir'}})});}catch(e){}}}
+/* 17/11/2026 drive layout (claude/drive-layout.md): the Sinus folder is found by its tag appProperties.citrusApp='sinus',
+   never by path, so Citrus can move and rename it (Citrus › Learning › Medicine › ECG - Sinus). Order: cached id (checked
+   once a session) → oldest folder tagged citrusApp=sinus → our older tag sinus=hubdir (re-tagged) → the old path
+   My Apps/hub/sinus (tagged at once) → create My Apps/hub/sinus and tag it at once. Sinus never renames or moves it. */
+const HUB_TAG="appProperties has { key='citrusApp' and value='sinus' }";let hubChecked=false;
+async function hubTag(id){try{await hubFetch(HUB_FILES+'/'+id+'?fields=id',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({appProperties:{citrusApp:'sinus',sinus:'hubdir'}})});}catch(e){}}
+async function hubTree(){const h=hubGet();
+  if(h.apps){if(hubChecked)return h.apps;
+    try{const f=await hubFetch(HUB_FILES+'/'+h.apps+'?fields=id,trashed,appProperties');hubChecked=true;
+      if(f&&!f.trashed){if(!f.appProperties||f.appProperties.citrusApp!=='sinus')await hubTag(f.id);return h.apps;}}
+    catch(e){if(e.message==='nosignin')throw e;}
+    hubSet({apps:null,fid:null});}
+  let dir=await hubFind(HUB_TAG);
+  if(!dir){dir=await hubFind("appProperties has { key='sinus' and value='hubdir' }")||await hubFind(hubNameQ('sinus'));if(dir)await hubTag(dir.id);}
   let own=!!h.own;
   if(!dir){let root=await hubFind(hubNameQ(HUB.root,'root'));
     if(!root){root={id:await hubMk(HUB.root,'root',{sinus:'root'})};own=true;}
     let hub=await hubFind(hubNameQ('hub',root.id));if(!hub)hub={id:await hubMk('hub',root.id)};
-    dir={id:await hubMk('sinus',hub.id,{sinus:'hubdir'})};}
-  hubSet({apps:dir.id,own});return dir.id;}
+    dir={id:await hubMk('sinus',hub.id,{citrusApp:'sinus',sinus:'hubdir'})};}
+  hubChecked=true;hubSet({apps:dir.id,own});return dir.id;}
 async function hubWrite(force){const c=syGet(SYK)||{};if(c.kind!=='drive'||!c.client)return;if(!gTok())return;if(navigator.onLine===false)return;
   const st=hubStatus();const fp=JSON.stringify(Object.assign({},st,{updatedAt:0}));const h=hubGet();
   if(!force&&(fp===h.fp||Date.now()-(h.at||0)<5*60000))return;if(HUB.busy)return;HUB.busy=true;
@@ -15407,8 +15418,8 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 setTimeout(()=>hubWrite(false),6000);
 /* Settings line under the sync section */
 const _syHtml=syHtml;syHtml=function(){const h=_syHtml();const c=syCfg();if(!c||c.kind!=='drive')return h;const s=hubGet();
-  const own=s.own?'<span class="note">Google lets Sinus see only folders it made itself, so it could not see a “My Apps” folder made by another app and made its own My Apps / hub / sinus. If Drive now shows two “My Apps” folders, you can move the “sinus” folder into the other one: Sinus still finds it.</span>':'';
-  return h+'<div class="sy-hub"><b>Citrus Maxima</b><span class="note">'+esc(s.msg||'Sinus shares a one-line status (what is due and the minutes needed) with your scheduler through Drive → My Apps / hub / sinus / status.json. Nothing else.')+'</span>'+own+'<div class="btnrow"><button class="tool sm" id="hubNow">Share now</button></div></div>';};
+  const own=s.own?'<span class="note">Google lets Sinus see only folders it made itself, so it could not see a “My Apps” folder made by another app and made its own My Apps / hub / sinus. Citrus Maxima moves the “sinus” folder into Citrus › Learning › Medicine on its daily Drive tidy; Sinus finds it by its tag wherever it goes, so you never need to move it yourself.</span>':'';
+  return h+'<div class="sy-hub"><b>Citrus Maxima</b><span class="note">'+esc(s.msg||'Sinus shares a one-line status (what is due and the minutes needed) with your scheduler through status.json in your Sinus folder in Drive (Citrus › Learning › Medicine › ECG - Sinus once Citrus Maxima organises Drive; until then My Apps / hub / sinus). Nothing else.')+'</span>'+own+'<div class="btnrow"><button class="tool sm" id="hubNow">Share now</button></div></div>';};
 const _syWire=syWire;syWire=function(sec){_syWire(sec);const b=sec.querySelector('#hubNow');if(b)b.onclick=async()=>{if(!gTok()){try{await gSignIn(true);}catch(e){toast(e.message);return;}}hubSet({fp:''});hubWrite(true);toast('Sharing with Citrus…');};};
 window.SINUS_HUB={status:hubStatus,write:()=>hubWrite(true)};
 
@@ -15454,7 +15465,7 @@ setTimeout(()=>bkReports(false),12000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>bkReports(false),4000);});
 /* --- Settings line --- */
 {const _h=syHtml;syHtml=function(){const h=_h();const c=syCfg();if(!c||c.kind!=='drive')return h;const s=bkGet();
-  return h+'<div class="sy-hub"><b>Backups in your Drive</b><span class="note">'+esc(s.msg||'Once a day Sinus writes readable copies to Drive → My Apps / hub / sinus: this month’s answers as a CSV, the recap image, and your casebook PDF (so a new device can fetch it).')+'</span><div class="btnrow"><button class="tool sm" id="bkNow">Back up now</button></div></div>';};
+  return h+'<div class="sy-hub"><b>Backups in your Drive</b><span class="note">'+esc(s.msg||'Once a day Sinus writes readable copies to your Sinus folder in Drive (Citrus › Learning › Medicine › ECG - Sinus once Citrus Maxima organises Drive; until then My Apps / hub / sinus): this month’s answers as a CSV, the recap image, and your casebook PDF (so a new device can fetch it).')+'</span><div class="btnrow"><button class="tool sm" id="bkNow">Back up now</button></div></div>';};
  const _w=syWire;syWire=function(sec){_w(sec);const b=sec.querySelector('#bkNow');if(b)b.onclick=async()=>{if(!gTok()){try{await gSignIn(true);}catch(e){toast(e.message);return;}}toast('Backing up…');try{const pdf=await idbGet();if(pdf)await bkCasebookUp(pdf);}catch(e){}bkReports(true);};};}
 /* general upload into My Apps/hub/sinus (for WP17's portfolio PDF): replaces a file of the same name;
    rejects with a plain message when not signed in to Google. Resolves {id,name,size}. */
