@@ -3,3 +3,4 @@ real-src
 .check.js
 .gate.log
 __pycache__/
+.cloud-mass.png

@@ -15149,8 +15149,9 @@ const SY_CORE=(function(){
     const first=await drFind(env,cfg);
     if(r&&r.id&&first&&first.id!==r.id){try{await dr(env,cfg,DR+'/'+r.id,{method:'DELETE'});}catch(e){}throw CONFLICT();}
     return r&&r.version;}
-  const pullAny=(env,cfg)=>cfg.kind==='drive'?drPull(env,cfg):pull(env,cfg);
-  const pushAny=(env,cfg,M,R,dev,clock,id)=>cfg.kind==='drive'?drPush(env,cfg,M,R,dev,clock,id):push(env,cfg,M,R,dev,clock,id);
+  /* env.drive (parts/60-cloud.js, 26/11/2026): Drive as a small core + 16 part files; the merge below is unchanged */
+  const pullAny=(env,cfg)=>cfg.kind==='drive'?(env.drive?env.drive.pull(env,cfg):drPull(env,cfg)):pull(env,cfg);
+  const pushAny=(env,cfg,M,R,dev,clock,id)=>cfg.kind==='drive'?(env.drive?env.drive.push(env,cfg,M,R,dev,clock,id):drPush(env,cfg,M,R,dev,clock,id)):push(env,cfg,M,R,dev,clock,id);
   /* One sync: pull → merge → apply locally → push (one commit), retried from the pull on a conflict.
      io: {getLocal()→{s,t}, getBase()→{s,t}|null, apply(M,newBase) (synchronous: save S and base together), setBase(b)} */
   async function syncOnce(env,cfg,io){
@@ -15178,9 +15179,11 @@ const SY_CORE=(function(){
       const why=safety(M,R);
       if(why){io.setBase(null);throw new SyncError('Safety stop: '+why+'. Nothing was uploaded or changed. The next sync will re-read everything and combine without removing anything.',{safety:true});}
       const incoming=!eq(noLin(M.s),noLin(L0.s));
+      /* mass-delete stop (parts/60-cloud.js): may keep a Drive copy of this device first, or throw to stop */
+      if(R&&incoming&&env.guard)await env.guard(M,L0,R);
       if(R){if(!incoming&&!eq(M.s.lin,L0.s.lin)&&io.setLin)io.setLin(clone(M.s.lin));io.apply(M,{s:R.s,t:R.t},incoming);}
       /* only the lineage differs from the cloud: nothing to upload yet (it travels with the next real change) */
-      const same=R&&eq(noLin(M.s),noLin(R.s));
+      const same=R&&!R.dirty&&eq(noLin(M.s),noLin(R.s));   /* R.dirty: the transport must rewrite (a damaged part set aside, an old file to migrate) */
       if(same){io.setBase(eq(M.s,R.s)?{s:M.s,t:M.t,last:lastId,pc:lastPc}:{s:R.s,t:R.t,last:lastId,pc:lastPc});return {pulled:incoming,pushed:false,attempts:attempt+1,note};}
       const pid=(cfg.dev||'d')+'-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
       const pc=R?ctrOf(R.s):null;
@@ -15190,7 +15193,7 @@ const SY_CORE=(function(){
       io.setBase({s:M.s,t:M.t,last:pid,pc});
       return {pulled:incoming,pushed:true,attempts:attempt+1,note};}
     throw new SyncError('Another device kept changing the cloud. Try again in a moment.',{retryable:true});}
-  return {FILE,LOCAL,canon,eq,clone,mergeState,merge3,safety,localOf,applyTo,Stamper,Clock,SyncError,b64e,b64d,pull,push,drPull,drPush,syncOnce,explain,DEL,sharedLineage,ensureLin,regressed,untrim};
+  return {FILE,LOCAL,mkDoc,isCtr,isMax,CAPS,canon,eq,clone,mergeState,merge3,safety,localOf,applyTo,Stamper,Clock,SyncError,b64e,b64d,pull,push,drPull,drPush,syncOnce,explain,DEL,sharedLineage,ensureLin,regressed,untrim};
 })();
 /* SY-CORE-END */
 
@@ -15246,14 +15249,14 @@ function syRevokeGoogle(){const c=syGet(SYK)||{};const t=c.gtok;if(!t)return;
 let syBusy=false,syTimer=null,syLastRun=0;
 function sySoon(){clearTimeout(syTimer);syTimer=setTimeout(()=>syRun(false),8000);}
 function syFmt(iso){const d=new Date(iso);if(isNaN(d))return '';const p=n=>String(n).padStart(2,'0');return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes());}
-function syEnv(manual){return {fetch:(u,o)=>fetch(u,o),sleep:ms=>new Promise(r=>setTimeout(r,ms)),clock:syClock,token:i=>gToken(manual||i),forget:()=>syUpd({gtok:null,gexp:0})};}
+function syEnv(manual){const e={fetch:(u,o)=>fetch(u,o),sleep:ms=>new Promise(r=>setTimeout(r,ms)),clock:syClock,token:i=>gToken(manual||i),forget:()=>syUpd({gtok:null,gexp:0})};return typeof cloudEnv==='function'?cloudEnv(e,manual,syCfg()):e;}
 function syRefreshUi(){try{hud();}catch(e){}
   try{if($('sheet').hidden){if(!$('v-learn').hidden)go('learn',null,true);else if(!$('v-plan').hidden)go('plan',null,true);}}catch(e){}}
 async function syCore(manual){
   const cfg=syCfg();if(!cfg)return {skip:'off'};
   if(cfg.paused&&!manual)return {skip:'paused'};
   if(manual&&cfg.paused)syUpd({paused:false});
-  if(navigator.onLine===false){const m='Offline: Sinus will sync when the connection is back.';syUpd({msg:m,ok:false});syPaint();if(manual)toast(m);return {skip:'offline'};}
+  if(navigator.onLine===false){const m='Offline: Sinus will sync when the connection is back.';syUpd({msg:m,ok:false});syPaint();if(manual)toast(m);try{cloudDone({skip:'offline'},null,manual);}catch(x){}return {skip:'offline'};}
   syUpd({msg:'Syncing…',busy:true});syPaint();
   try{
     const r=await SY_CORE.syncOnce(syEnv(manual),cfg,{
@@ -15270,9 +15273,9 @@ async function syCore(manual){
     });
     const now=new Date().toISOString();
     const m=(r.note==='restored'?'Restored backup combined with the cloud (nothing was removed). ':r.note==='overwritten'?'Recovered from an upload another device overwrote. ':'')+(r.pulled&&r.pushed?'Synced: progress from another device was added, and this device’s was uploaded.':r.pulled?'Synced: progress from another device was added.':r.pushed?'Synced: this device’s progress was uploaded.':'Up to date.');
-    syUpd({last:now,msg:m,ok:true,busy:false});if(manual)toast(m);return r;
+    syUpd({last:now,msg:m,ok:true,busy:false});if(manual)toast(m);try{cloudDone(r,null,manual);}catch(x){}return r;
   }catch(e){
-    const m=(e&&e.message)||String(e);syUpd({msg:m,ok:false,busy:false,errAt:new Date().toISOString()});if(manual)toast(m);return {error:m};
+    const m=(e&&e.message)||String(e);syUpd({msg:m,ok:false,busy:false,errAt:new Date().toISOString()});if(manual)toast(m);try{cloudDone(null,e,manual);}catch(x){}return {error:m};
   }finally{syPaint();}
 }
 async function syRun(manual){
@@ -15281,7 +15284,7 @@ async function syRun(manual){
   if(syBusy){if(manual)toast('A sync is already running.');return;}
   syBusy=true;
   try{
-    if(navigator.locks&&navigator.locks.request)return await navigator.locks.request('sinus-sync',{ifAvailable:true},async lock=>{if(!lock){if(manual)toast('Another Sinus tab is syncing.');return;}return syCore(manual);});
+    if(navigator.locks&&navigator.locks.request)return await navigator.locks.request(syCfg().kind==='drive'?'sinus-drive':'sinus-sync',{ifAvailable:true},async lock=>{if(!lock){if(manual)toast('Another Sinus tab is syncing.');return;}return syCore(manual);});
     return await syCore(manual);
   }finally{syBusy=false;}
 }
@@ -15509,6 +15512,8 @@ async function bkUploadFile(name,blob,mime){name=String(name||'').replace(/[\\/]
   try{const r=await bkWithRetry(async()=>{const dir=await bkFolder();const f=await bkFind(name,dir);return bkUpload(name,blob,mime,dir,f&&f.id);});return {id:r&&r.id,name,size:r&&+r.size};}
   catch(e){throw new Error(e.message==='nosignin'?'Google sign-in expired. Sign in again (Settings → Sync now).':'Could not save to Drive ('+e.message+').');}}
 window.SINUS_BACKUP={csv:bkCsv,run:()=>bkReports(true),pdfUp:bkCasebookUp,pdfDown:bkCasebookDown,upload:bkUploadFile};
+/* hand the sync internals to the Drive cloud model (parts/60-cloud.js) */
+if(typeof cloudBind==='function')cloudBind({run:syRun,cfg:syCfg,get:syGet,set:sySet,upd:syUpd,fmt:syFmt,paint:syPaint,hubFetch,hubTree,gTok,gSignIn,SYB,SYK,clock:syClock});
 
 })();
 /* KIT-END */
