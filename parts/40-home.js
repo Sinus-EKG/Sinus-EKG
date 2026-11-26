@@ -37,12 +37,12 @@ function h2_next(){const X=h2_X();const M=D3HOME.mix;const min=X.uiMin();
   if(!h2_dayDone())return {k:'day',kick:'Next up · case of the day',title:'A real ECG, chosen for today',sub:done+' One recording, read it like a shift.',btn:'Read it',attr:'data-h2go="concept|ecgday"'};
   const due=h2_due().length;
   if(due)return {k:'due',kick:'Next up · reviews',title:h2_pl(due,'review')+' due',sub:done+' Patterns coming back on schedule.',btn:'Review them',attr:'data-h2scope="due"'};
-  if(CON.round)return {k:'round',kick:'Next up · the Round',title:'A shift of ECGs, about 25 minutes',sub:done+' Read, estimate, teach it back.',btn:'Start the Round',attr:'data-h2go="concept|round"'};
+  if(CON.round)return {k:'round',kick:'Next up · the Round',title:'A shift of ECGs, about '+(typeof rdMinOf==='function'?rdMinOf():25)+' minutes',sub:done+' Read, estimate, teach it back.',btn:'Start the Round',attr:'data-h2go="concept|round"'};
   const p=X.plan(min);return {k:'mix',kick:'Next up · another mix',title:p.N+' ECGs, about '+min+' minutes',sub:done+' '+X.planText(p),btn:'Start mix',attr:'data-d3start',mins:true};}
 function h2_minsHtml(){const X=h2_X(),min=X.uiMin();
   return '<div class="h2-mins" role="group" aria-label="Minutes available">'+[10,25,40].map(m=>'<button class="h2-min" data-d3min="'+m+'" aria-pressed="'+(m===min)+'">'+m+' min</button>').join('')+'</div>';}
 function h2_nextHtml(){const n=h2_next();
-  return '<section class="card h2-next" aria-label="Next up"><div class="h2-kick">'+esc(n.kick)+'</div><h2 class="h2-title">'+esc(n.title)+'</h2>'+
+  return '<section class="card h2-next" aria-label="Next up"><div class="h2-kick">'+esc(n.kick)+'</div><h2 class="h2-title">'+esc(n.title)+'</h2>'+(window.CITRUSPLAN?CITRUSPLAN.lineHtml():'')+
     (n.sub?'<p class="h2-sub">'+esc(n.sub)+'</p>':'')+
     '<div class="h2-acts"><button class="btn h2-main" '+n.attr+'>'+esc(n.btn)+'</button>'+(n.mins?h2_minsHtml():'')+'</div></section>';}
 
