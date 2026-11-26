@@ -1,0 +1,61 @@
+/* ═══════════ SIG: the family signature (lane 1, 26/11/2026; claude/signature.md): wheel, corner fold, peel, pip ═══════════
+   Sinus's segment is ECG red (#ec3b26), apart from Mandarin's burnt #c74e00 and Zest's yellow #ffc21a. */
+:root{--sig:#ff7a1a;--sig-deep:#e0600a;--sig-pale:#ffd9b8;--sig-app:#ec3b26;--sig-qrs:#fff4ec}
+:root[data-theme="light"]{--sig-deep:#c75200}
+
+/* 1. the wheel, left of "Sinus" */
+.brand.sig-brand>svg:not(.sig-mark){display:none}
+.brand .sig-mark{width:28px;height:28px;flex:none;overflow:visible}
+.sig-mark .rind{fill:var(--sig)}.sig-mark .flesh{fill:var(--sig-pale)}.sig-mark .seg{fill:var(--sig-app)}
+.sig-mark .core{fill:var(--sig-deep)}
+.sig-mark .pith path{stroke:var(--sig);stroke-width:1.4;stroke-linecap:round;fill:none}
+.sig-mark .qrs,.sig-mark .qrs-h{fill:none;stroke-linejoin:round;stroke-linecap:round}
+.sig-mark .qrs-h{stroke:var(--sig-qrs);stroke-width:2.5}.sig-mark .qrs{stroke:var(--sig-app);stroke-width:1.2}
+.sig-mark .sig-spin,.sig-mark .sig-seg{transform-box:view-box;transform-origin:16px 16px}
+html.px .sig-mark .rind,html.px .sig-mark .flesh,html.px .sig-mark .core{shape-rendering:crispEdges}
+/* turns while syncing */
+html.sig-sync .sig-mark .sig-spin{animation:sig-spin 1.6s linear infinite}
+@keyframes sig-spin{to{transform:rotate(360deg)}}
+/* one heartbeat (lub-dub) after a right answer: the segment pushes out along its own radius and the trace redraws */
+html.sig-beat .sig-mark .sig-seg{animation:sig-beat .8s cubic-bezier(.3,.7,.3,1) 1}
+html.sig-beat .sig-mark .qrs{stroke-dasharray:100;animation:sig-qrs .8s ease-out 1}
+@keyframes sig-beat{0%{transform:none}14%{transform:translate(1.1px,1.9px) scale(1.1)}28%{transform:none}42%{transform:translate(.6px,1px) scale(1.05)}60%,100%{transform:none}}
+@keyframes sig-qrs{0%{stroke-dashoffset:100}55%,100%{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){html .sig-mark .sig-spin,html .sig-mark .sig-seg,html .sig-mark .qrs{animation:none!important}}
+html.nomotion .sig-mark .sig-spin,html.nomotion .sig-mark .sig-seg,html.nomotion .sig-mark .qrs{animation:none!important}
+
+/* 2. corner fold: 16 px, top right of each top-level card, the orange underside showing */
+:where(main .card:not(.card .card)){position:relative}
+main .card:not(.card .card)::after{content:"";position:absolute;top:-1px;right:-1px;width:16px;height:16px;pointer-events:none;z-index:2;
+  background:var(--bg) no-repeat 0 0/100% 100% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cdefs%3E%3ClinearGradient id='f' x1='0' y1='1' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23ff7a1a'/%3E%3Cstop offset='1' stop-color='%23ffa25c'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M0 0L16 16H0Z' fill='url(%23f)'/%3E%3C/svg%3E");
+  border-bottom-left-radius:5px;border-top-right-radius:var(--r);box-shadow:-1px 1px 2px rgba(0,0,0,.18)}
+/* Pixel: square and stepped, no shadow */
+html.px main .card:not(.card .card)::after{top:-2px;right:-2px;border-radius:0;box-shadow:none;
+  background:var(--bg) no-repeat 0 0/100% 100% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Cpath d='M0 0H4V4H8V8H12V12H16V16H0Z' fill='%23ff7a1a'/%3E%3Cpath d='M0 12H2V14H4V16H0Z' fill='%23e0600a'/%3E%3C/svg%3E")}
+.sheet .card::after,.kit-sheet .card::after{display:none}
+
+/* 3. the peel under every screen title: symmetrical, drawn to the title's own width (inline-block h1 + ::after at 100% 100%) */
+main .view h1:not(.sr-only){position:relative;display:inline-block;width:fit-content;max-width:100%;justify-self:start;align-self:start;padding-bottom:clamp(10px,.32em,15px)}
+main .view h1:not(.sr-only)::after{content:"";position:absolute;left:0;right:0;bottom:0;height:clamp(8px,.26em,13px);pointer-events:none;
+  background:no-repeat center/100% 100% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 14' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%23ec3b26'/%3E%3Cstop offset='.5' stop-color='%23ff7a1a'/%3E%3Cstop offset='1' stop-color='%23ec3b26'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M1 2.5 C 50 10, 150 10, 199 2.5 C 152 15.5, 48 15.5, 1 2.5 Z' fill='url(%23g)'/%3E%3Cpath d='M24 7.2 C 70 11.4, 130 11.4, 176 7.2' fill='none' stroke='%23ffe3cc' stroke-width='1.2' stroke-linecap='round' opacity='.85' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+  filter:drop-shadow(0 1px 1px rgba(160,70,0,.16))}
+/* Pixel: the same smile in 2-unit steps */
+html.px main .view h1:not(.sr-only){padding-bottom:12px}
+html.px main .view h1:not(.sr-only)::after{height:8px;filter:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 12' preserveAspectRatio='none' shape-rendering='crispEdges'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%23ec3b26'/%3E%3Cstop offset='.3' stop-color='%23ff7a1a'/%3E%3Cstop offset='.7' stop-color='%23ff7a1a'/%3E%3Cstop offset='1' stop-color='%23ec3b26'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M0 0L10 0L10 2L30 2L30 4L60 4L60 6L140 6L140 4L170 4L170 2L190 2L190 0L200 0L200 2L190 2L190 4L180 4L180 6L160 6L160 8L140 8L140 10L120 10L120 12L80 12L80 10L60 10L60 8L40 8L40 6L20 6L20 4L10 4L10 2L0 2Z' fill='url(%23g)'/%3E%3C/svg%3E")}
+
+/* 4. the pip: a seed marking "now" */
+#topnav button[aria-current="true"],#botnav [aria-current="true"]{position:relative}
+#topnav button[aria-current="true"]::after,#botnav [aria-current="true"]::after,.mx-cal i.today::after,.sig-now::before,[aria-current="date"]::before,.d3-date::before{
+  content:"";width:6px;height:8px;background:var(--sig);border-radius:50% 50% 46% 46%/62% 62% 38% 38%;pointer-events:none}
+html.px #topnav button[aria-current="true"]::after,html.px #botnav [aria-current="true"]::after,html.px .mx-cal i.today::after,html.px .sig-now::before,html.px [aria-current="date"]::before,html.px .d3-date::before{
+  border-radius:0;clip-path:polygon(1px 0,5px 0,5px 2px,6px 2px,6px 6px,4px 6px,4px 8px,2px 8px,2px 6px,0 6px,0 2px,1px 2px)}
+#topnav button[aria-current="true"]::after{position:absolute;left:50%;bottom:3px;margin-left:-3px;transform:rotate(180deg);background:var(--sig-pale)}
+#botnav [aria-current="true"]::after{position:absolute;left:calc(50% + 29px);top:12px;transform:rotate(90deg)}
+.mx-cal i.today{position:relative}
+.mx-cal i.today::after{position:absolute;left:50%;top:50%;margin:-4px 0 0 -3px}
+.mx-cal i.today.on::after{background:var(--surface)}
+.sig-now::before,[aria-current="date"]::before,.d3-date::before{display:inline-block;margin-right:6px;transform:rotate(18deg);vertical-align:0}
+/* the Round bar: the current leg is a seed lying on its side */
+.rd-pips i.cur{width:9px;height:12px;margin:0 2px;background:var(--sig);border-radius:50% 50% 46% 46%/62% 62% 38% 38%;transform:rotate(-90deg)}
+html.px .rd-pips i.cur{border-radius:0;width:8px;clip-path:polygon(2px 0,6px 0,6px 2px,8px 2px,8px 8px,6px 8px,6px 12px,2px 12px,2px 8px,0 8px,0 2px,2px 2px)}
