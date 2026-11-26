@@ -1,0 +1,2 @@
+/* ===== Lane 8 · idle power budget: no CSS animation runs while idle or hidden (parts/95-perf.js sets html.cp-idle) ===== */
+html.cp-idle *,html.cp-idle *::before,html.cp-idle *::after{animation-play-state:paused!important}

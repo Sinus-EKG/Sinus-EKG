@@ -9914,7 +9914,7 @@ function md_calBuild(host){
       box.innerHTML='<p class="eyebrow">Problem '+(run.i+1)+' of 10 · lead II</p><h3 class="md-h">Measure the '+esc(MD_CAL[cur.m].n)+'</h3><p class="note">'+esc(MD_CAL[cur.m].how)+'. Any clear beat will do. Tap the strip to move the nearest handle; zoom in for precision.</p>';
       const vh=document.createElement('div');box.appendChild(vh);v=md_viewer(vh,'strip',{cal:true,noFull:true});v.set(cur.D,[],'Caliper strip');
       ctl.innerHTML='<p class="md-live">Calipers: <b class="md-cv">'+esc(v.calMs()+' ms')+'</b></p><div class="btnrow"><button class="btn md-lock">Lock in</button></div><div class="md-res"></div>';
-      const cv=ctl.querySelector('.md-cv');const iv=setInterval(()=>{if(!w.isConnected||phase!=='measure'){clearInterval(iv);return;}cv.textContent=v.calMs()+' ms';},150);
+      const cv=ctl.querySelector('.md-cv');/* lane 8: follows the handles (any input moves them: pointer, keys, controller) instead of a 150 ms poll */{let rq=0;const mo=new MutationObserver(()=>{if(!w.isConnected||phase!=='measure'){mo.disconnect();return;}if(rq)return;rq=requestAnimationFrame(()=>{rq=0;cv.textContent=v.calMs()+' ms';});});mo.observe(box,{attributes:true,subtree:true,attributeFilter:['style','aria-valuenow','transform','x','x1','x2','cx']});}
       ctl.querySelector('.md-lock').onclick=lock;try{const h=box.querySelector('.cl[role=slider]');if(h)h.focus({preventScroll:true});}catch(e){}}
     function lock(){if(phase!=='measure')return;phase='fb';const got=v.calMs();let off=0;try{const nr=md_calNearest(cur,v.calPos());if(nr.sp){cur.a=nr.sp.a;cur.b=nr.sp.b;cur.truth=nr.sp.truth;}off=nr.off;}catch(e){}
       const miss=off>80;const err=Math.abs(got-cur.truth);try{ctl.querySelector('.md-cv').textContent=got+' ms';}catch(e){}const pts=miss?0:err<=20?10:err<=40?6:err<=80?2:0;run.sc+=pts;run.res.push({m:cur.m,id:cur.id,got,truth:cur.truth,err,pts});
@@ -11663,7 +11663,8 @@ function rdBar(){if(!rdBarEl){rdBarEl=document.createElement('div');rdBarEl.id='
 document.addEventListener('keydown',e=>{try{if(!rdActive()||e.ctrlKey||e.metaKey||e.altKey||e.repeat)return;const t=e.target;if(t&&t.closest&&t.closest('textarea,select,[contenteditable="true"],input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=button])'))return;if(document.querySelector('.kit-sheet')||($('sheet')&&!$('sheet').hidden))return;
   const k=(e.key||'').toLowerCase();let own=false;try{const cv=$('v-concept');own=!!(cv&&!cv.hidden&&['normalornot','glue'].includes(curConcept));}catch(er){}
   if(k==='n'&&!e.shiftKey&&!own){e.preventDefault();rdNext();}else if(k==='s'&&e.shiftKey){e.preventDefault();rdSkip();}}catch(err){}});
-setInterval(()=>{try{rdSync();rdBar();}catch(e){}},1000);
+/* lane 8 (26/11/2026): event-driven, not a 1 s poll: after taps, keys, route changes and every save() (parts/95-perf.js) */
+{let q=0;const f=()=>{if(q)return;q=setTimeout(()=>{q=0;try{rdSync();rdBar();}catch(e){}},0);};['click','keyup','pointerup','visibilitychange','sinus:saved'].forEach(t=>document.addEventListener(t,f,true));addEventListener('hashchange',f);addEventListener('popstate',f);f();}
 /* caliper lock-ins count as problems */
 document.addEventListener('click',e=>{try{if(!rdActive())return;const b=e.target.closest('.md-lock');if(b&&!b.hidden&&!b.disabled)rdBump('cal');}catch(err){}},true);
 
@@ -15273,7 +15274,8 @@ async function syRun(manual){
 }
 document.addEventListener('visibilitychange',()=>{if(!syCfg())return;if(document.visibilityState==='hidden'){clearTimeout(syTimer);syLastRun=0;syRun(false);}else setTimeout(()=>syRun(false),1000);});
 window.addEventListener('online',()=>{if(syCfg())setTimeout(()=>syRun(false),1500);});
-setInterval(()=>{if(syCfg()&&document.visibilityState!=='hidden')syRun(false);},5*60000);
+/* lane 8 (26/11/2026): no 5-minute poll; pull when the person comes back from idle or saves, at most every 5 min (parts/95-perf.js) */
+['sinus:wake','sinus:saved'].forEach(t=>document.addEventListener(t,()=>{if(syCfg()&&document.visibilityState!=='hidden'&&Date.now()-syLastRun>5*60000)syRun(false);}));
 setTimeout(()=>{if(syCfg())syRun(false);},3000);
 
 function syUndo(){
