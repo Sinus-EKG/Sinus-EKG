@@ -33,3 +33,5 @@ SIG.seen=sig_lastT();
     if(fresh===1&&e[2]===1&&!exam&&Date.now()-e[0]<5000)SIG.beat();}}catch(x){}return r;};}
 sig_brand();
 {let raf=0;try{new MutationObserver(()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;if(document.querySelector('.brand:not(.sig-brand)'))sig_brand();});}).observe(document.body,{childList:true,subtree:true});}catch(e){}}
+window.SINUS_SIG={beat:()=>SIG.beat(),busy:on=>SIG.busy(on),mark:sigMark};
+if(navigator.webdriver)window.SINUS_SIG.quizKey=()=>{try{return Q.realRec?Q.realRec.pats[0]:Q.cur&&Q.cur.id;}catch(e){return null;}};
