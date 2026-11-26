@@ -35,3 +35,11 @@ sig_brand();
 {let raf=0;try{new MutationObserver(()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;if(document.querySelector('.brand:not(.sig-brand)'))sig_brand();});}).observe(document.body,{childList:true,subtree:true});}catch(e){}}
 window.SINUS_SIG={beat:()=>SIG.beat(),busy:on=>SIG.busy(on),mark:sigMark};
 if(navigator.webdriver)window.SINUS_SIG.quizKey=()=>{try{return Q.realRec?Q.realRec.pats[0]:Q.cur&&Q.cur.id;}catch(e){return null;}};
+/* Corner fold only on each screen's lead card (owner's feedback 25/11/2026, as in Zest 1.2.0): mark the first
+   visible top-level card of the open view with .sig-lead. */
+{let t=0;const lead=()=>{t=0;try{const m=document.querySelector('main');if(!m)return;
+  let first=null;for(const c of m.querySelectorAll('.card')){if(c.parentElement.closest('.card'))continue;if(!c.offsetParent)continue;first=c;break;}
+  m.querySelectorAll('.card.sig-lead').forEach(c=>{if(c!==first)c.classList.remove('sig-lead');});if(first)first.classList.add('sig-lead');}catch(e){}};
+  const soon=()=>{if(!t)t=setTimeout(lead,120);};
+  new MutationObserver(soon).observe(document.querySelector('main')||document.body,{childList:true,subtree:true});
+  window.addEventListener('hashchange',soon);soon();}

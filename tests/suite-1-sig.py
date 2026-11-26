@@ -42,8 +42,8 @@ with sync_playwright() as p:
             # 2. pip on the active top tab (Deck) or bottom tab (phone)
             pip=pg.evaluate("""(()=>{const a=document.querySelector('%s [aria-current="true"]');if(!a)return null;const s=getComputedStyle(a,'::after');return s.content+'|'+s.width+'|'+s.height;})()"""%('#botnav' if mob else '#topnav'))
             ck(pip=='""|6px|8px',tag+': no pip on the active tab (%r)'%pip)
-            # 3. peel under the lesson title fits its width; 4. fold on a top-level card, not on nested ones
-            pg.evaluate("location.hash='#lesson-nsr'");pg.wait_for_timeout(700)
+            # 3. peel under the lesson title fits its width; 4. fold only on the lead top-level card (owner 25/11/2026), never nested
+            pg.evaluate("location.hash='#lesson-nsr'");pg.wait_for_timeout(900)
             pr=pg.evaluate("""(()=>{const h=document.getElementById('lTitle');const s=getComputedStyle(h,'::after');const r=h.getBoundingClientRect();
               const rg=document.createRange();rg.selectNodeContents(h);const t=rg.getBoundingClientRect();
               return {d:getComputedStyle(h).display,bg:s.backgroundImage.slice(0,30),pw:parseFloat(s.width),hw:r.width,tw:t.width};})()""")
@@ -53,7 +53,7 @@ with sync_playwright() as p:
               const nest=[...document.querySelectorAll('#v-lesson .card .card')].filter(c=>c.offsetParent);
               return {top:top.length,ok:top.filter(c=>{const s=getComputedStyle(c,'::after');return s.content==='""'&&s.width==='16px'&&s.height==='16px';}).length,
                 nested:nest.filter(c=>getComputedStyle(c,'::after').content==='""'&&getComputedStyle(c,'::after').width==='16px').length};})()""")
-            ck(fd['top']>0 and fd['ok']==fd['top'],tag+': fold missing on top-level cards %r'%fd)
+            ck(fd['top']>0 and fd['ok']==1,tag+': fold must be on exactly one (the lead) top-level card %r'%fd)
             ck(fd['nested']==0,tag+': fold on nested cards %r'%fd)
             if shots:pg.screenshot(path='%s/sig-%s-%d-lesson.png'%(shots,look,vp[0]))
             # today in the 12-week calendar
