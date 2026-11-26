@@ -4377,10 +4377,13 @@ const METHOD=[['Rate','300 ÷ big squares between R waves, or count complexes in
 const PROF_SLUG=(()=>{try{return String(localStorage.getItem('sinus-profile')||'').replace(/[^a-z0-9-]/g,'').slice(0,24);}catch(e){return '';}})();
 const KEY='sinus-ecg-v1'+(PROF_SLUG?':'+PROF_SLUG:'');
 let S={xp:0,best:0,streak:0,studied:{},stats:{},meas:{n:0,c:0}};
-try{const raw=localStorage.getItem(KEY);if(raw){let j,bad=0;try{j=JSON.parse(raw);}catch(e){bad=1;}if(!bad&&(!j||typeof j!=='object'||Array.isArray(j)))bad=1;
-  if(bad){let kept=0;try{localStorage.setItem(KEY+'.corrupt',raw);kept=1;}catch(e){}setTimeout(()=>{try{toast(kept?'Your saved progress was damaged; a copy was kept':'Your saved progress was damaged and could not be copied (storage full)');}catch(e){}},900);}
-  else S=Object.assign(S,j);}}catch(e){}
-function save(){if(save.blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(S));return true;}catch(e){try{trimState();localStorage.setItem(KEY,JSON.stringify(S));return true;}catch(e2){if(!save.warned){save.warned=1;setTimeout(()=>toast&&toast('Storage is full or blocked: progress may not be saved. Copy a backup in Settings.'),0);}return false;}}}
+/* device store (lane 3, parts/50-devstore.js): S_LOAD says how the boot read went ('none' | 'bad' | 'ok' | 'blocked');
+   SAVE_HOOK(ok) is told about every save, so the IndexedDB mirror sees saves that bypass the save() wrappers */
+let S_LOAD='none',SAVE_HOOK=null;
+try{const raw=localStorage.getItem(KEY);if(raw){S_LOAD='ok';let j,bad=0;try{j=JSON.parse(raw);}catch(e){bad=1;}if(!bad&&(!j||typeof j!=='object'||Array.isArray(j)))bad=1;
+  if(bad){S_LOAD='bad';let kept=0;try{localStorage.setItem(KEY+'.corrupt',raw);kept=1;}catch(e){}setTimeout(()=>{try{toast(kept?'Your saved progress was damaged; a copy was kept':'Your saved progress was damaged and could not be copied (storage full)');}catch(e){}},900);}
+  else S=Object.assign(S,j);}}catch(e){S_LOAD='blocked';}
+function save(){if(save.blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(S));SAVE_HOOK&&SAVE_HOOK(true);return true;}catch(e){try{trimState();localStorage.setItem(KEY,JSON.stringify(S));SAVE_HOOK&&SAVE_HOOK(true);return true;}catch(e2){if(SAVE_HOOK&&SAVE_HOOK(false))return false;if(!save.warned){save.warned=1;setTimeout(()=>toast&&toast('Storage is full or blocked: progress may not be saved. Copy a backup in Settings.'),0);}return false;}}}
 /* No XP, levels or streak counters (owner decision 13/11/2026): hud() draws nothing; addXp() only saves.
    S.xp is kept as it is for old backups and sync, but is no longer shown or added to. */
 function hud(){}
@@ -15039,9 +15042,11 @@ const SY_CORE=(function(){
   /* per-key change stamps: compare each top-level key's JSON with the last one seen */
   function Stamper(){const prev=new Map();return {
     init(S){prev.clear();Object.keys(S).forEach(k=>{if(!LOCAL.has(k))prev.set(k,JSON.stringify(S[k]));});},
-    stamp(S,nowIso){let ch=0;S._t=S._t||{};let ts=null;const t=()=>ts||(ts=nowIso());
-      Object.keys(S).forEach(k=>{if(LOCAL.has(k))return;const j=JSON.stringify(S[k]);if(prev.get(k)!==j){prev.set(k,j);S._t[k]=t();ch++;}});
-      [...prev.keys()].forEach(k=>{if(!(k in S)){prev.delete(k);S._t[k]=t();ch++;}});return ch;},
+    stamp(S,nowIso){let ch=0;S._t=S._t||{};let ts=null;const t0=()=>ts||(ts=nowIso());
+      /* edit stamps never go backwards (as Orange 9.3.0 freshen): max(now, previous stamp of this key + 1 ms) */
+      const t=k=>{const n=t0(),p=Date.parse(S._t[k]||'');return p>=Date.parse(n)?new Date(p+1).toISOString():n;};
+      Object.keys(S).forEach(k=>{if(LOCAL.has(k))return;const j=JSON.stringify(S[k]);if(prev.get(k)!==j){prev.set(k,j);S._t[k]=t(k);ch++;}});
+      [...prev.keys()].forEach(k=>{if(!(k in S)){prev.delete(k);S._t[k]=t(k);ch++;}});return ch;},
     seen(S){this.init(S);}};}
 
   /* ---- GitHub contents API ---- */

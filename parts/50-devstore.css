@@ -1,0 +1,15 @@
+/* ===== Device store (lane 3): "Your data" card at the top of Settings, and the "Not saved" banner ===== */
+.ds-card .ds-say{margin:0;font-size:15px;line-height:1.4;color:var(--fg);padding-left:10px;border-left:3px solid var(--good)}
+.ds-card .ds-say[data-lv="waiting"],.ds-card .ds-say[data-lv="offline"],.ds-card .ds-say[data-lv="tap"]{border-left-color:var(--accent)}
+.ds-card .ds-say[data-lv="notsaved"]{border-left-color:var(--bad);color:var(--bad);font-weight:600}
+.ds-rows{margin:0;display:grid;gap:6px}
+.ds-row{display:grid;grid-template-columns:minmax(92px,auto) 1fr;gap:4px 12px;align-items:baseline;padding:6px 8px;border-radius:8px;background:var(--surface-2);min-width:0}
+.ds-row dt{font-size:13px;font-weight:600;color:var(--fg)}
+.ds-row dd{margin:0;font-size:13px;color:var(--muted);overflow-wrap:anywhere;min-width:0}
+.ds-row[data-s="warn"] dt::after{content:" ·";color:var(--accent)}
+.ds-row[data-s="bad"] dt{color:var(--bad)}
+@media (max-width:420px){.ds-row{grid-template-columns:1fr}}
+.ds-banner{position:fixed;left:8px;right:8px;top:8px;z-index:9999;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;
+  padding:10px 12px;border-radius:10px;background:var(--bad-soft,#fde2e2);color:var(--fg);border:2px solid var(--bad);box-shadow:0 4px 18px rgba(0,0,0,.18);font-size:14px;max-width:calc(100vw - 16px);box-sizing:border-box}
+.ds-banner b{color:var(--bad)}
+.ds-banner .ds-bb{display:flex;gap:8px;flex-wrap:wrap}
