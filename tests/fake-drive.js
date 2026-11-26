@@ -45,7 +45,7 @@ function createFakeDrive(){
     if(faults.offline){log.push(short+' offline');throw new TypeError('Failed to fetch');}
     const aborted=()=>{const e=new Error('The operation was aborted.');e.name='AbortError';return e;};
     if(sig&&sig.aborted)throw aborted();
-    if(faults.hang>0&&(!faults.hangMatch||faults.hangMatch.test(short))){faults.hang--;counts.hung++;log.push(short+' hangs');
+    if(faults.hang>0&&(!faults.hangMatch||faults.hangMatch.test(short+" "+url))){faults.hang--;counts.hung++;log.push(short+' hangs');
       return new Promise((_,rej)=>{if(sig)sig.addEventListener('abort',()=>rej(aborted()));});}
     if(faults.delay)await new Promise(r=>setTimeout(r,faults.delay));
     if(sig&&sig.aborted)throw aborted();

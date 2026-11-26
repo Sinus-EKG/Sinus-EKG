@@ -55,8 +55,10 @@ const SY_PARTS=(function(){
     mock:R_('fields',{hist:'log'}),curr:R_('fields',{hist:'log',cert:'map',best:'map'}),calg:R_('fields',{runs:'log'}),
     conf:R_('log','log'),days:R_('log','log'),exams:R_('log','log'),whyLog:R_('log','log'),qa:R_('log','log'),flags:R_('log','log'),
     flagged:R_('set','log'),
-    /* lane 7: S.cloop={reviews:{week:{writtenAt,done:[…]}}}: each week merged on its own, .done lists union, other clashes newest */
-    cloop:R_('fields',{reviews:'map'}),
+    /* lane 7: S.cloop={reviews:{week:'<json>'},note:{week:…},focus,finals:[…],off}. Each week is one value: changed on one
+       device it wins; changed on two, the newer edit of cloop wins (the merge cannot look inside the JSON string, so it does
+       not compare .at/.rank or union .done there); finals union; focus, off and notes newest. */
+    cloop:R_('fields',{reviews:'map',note:'map',finals:'log'}),
     /* lane 6: S.mast={patternId:{…}}: per pattern, newest edit wins on a clash */
     mast:R_('fields','map')};
   const shardOf=k=>MERGE_RULES[k]?MERGE_RULES[k].shard:'whole';
@@ -370,6 +372,6 @@ function cloudMassSheet(){const m=CLOUD_ST.mass;if(!m)return;
   const back=$('cmBack'),keep=$('cmKeep');
   if(back)back.onclick=()=>{const n=SY_PARTS.bringBack(S,CLOUD_ST.mass);CLOUD_ST.mass=null;save();closeSheet();toast(n+' brought back. They return on your other devices with the next sync.');setTimeout(()=>{try{CLOUD_IN.run(false);}catch(e){}},1500);};
   if(keep)keep.onclick=()=>{CLOUD_ST.mass=null;closeSheet();toast('Kept removed. The copy in Drive stays in case you change your mind.');};}
-const CLOUD={state:cloudState,rules:SY_PARTS.MERGE_RULES,syncNow:()=>CLOUD_IN&&CLOUD_IN.run(true),massPending:()=>!!CLOUD_ST.mass,showMass:cloudMassSheet,row:cloudRow};
+const CLOUD={parts:SY_PARTS,state:cloudState,rules:SY_PARTS.MERGE_RULES,syncNow:()=>CLOUD_IN&&CLOUD_IN.run(true),massPending:()=>!!CLOUD_ST.mass,showMass:cloudMassSheet,row:cloudRow};
 window.CLOUD=CLOUD;
 setTimeout(cloudRow,1500);

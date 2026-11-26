@@ -60,7 +60,7 @@ export function realisticS(seed = 7, opts = {}) {
   S.serial = { seen: { s1: 1 }, miss: [], lay: '' };
   S.bossN = { m1: 2 }; S.coachX = { d1: '2026-09-02' }; S.chal = { 1: 1 }; S.d03 = { last: { d: '2026-11-20', n: 10, c: 8, min: 12 } };
   S.est = { n: 3, hit: 2, byKind: { rate: { n: 3, hit: 2 } } }; S.why = { misread: 1, slip: 2, concept: 0, mix: 0 };
-  S.cloop = { reviews: { '2026-W47': { writtenAt: t0 + 77, done: ['a1'] } } };
+  S.cloop = { reviews: { '2026-W47': JSON.stringify({ at: t0 + 77, rank: 1, done: ['a1'] }) }, note: { '2026-W47': 'calm week' }, focus: 'axis', finals: ['2026-W46'], off: false };
   S.mast = { af: { m: 0.8, at: t0 }, vt: { m: 0.4, at: t0 } };
   return S;
 }
