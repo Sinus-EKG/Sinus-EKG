@@ -43,8 +43,12 @@ for f in os.listdir(os.path.join(H,'static')):
 real=os.path.realpath(os.path.join(H,'real-src'))
 os.symlink(real,os.path.join(OUT,'real')) if os.environ.get('LINKREAL','1')=='1' else shutil.copytree(real,os.path.join(OUT,'real'))
 hsh=hashlib.sha256()
-for f in ['index.html','manifest.webmanifest']+sorted(glob.glob(os.path.join(OUT,'icons','*'))):
+for f in ['index.html','manifest.webmanifest','real/index.json']+sorted(glob.glob(os.path.join(OUT,'icons','*'))):  # every precached file, so a new shell always gets a new cache
     hsh.update(open(f if os.path.isabs(f) else os.path.join(OUT,f),'rb').read())
 ver=hsh.hexdigest()[:12]
-open(os.path.join(OUT,'sw.js'),'w').write(rd(os.path.join(H,'sw.template.js')).replace('__VER__',ver))
+# sw.js: VER plus the SHA-256 of every precached shell file (the worker installs only if all of them match)
+tpl=rd(os.path.join(H,'sw.template.js'));pre=json.loads(re.search(r'const PRE=(\[[^\]]*\]);',tpl).group(1))
+hashes={u:hashlib.sha256(open(os.path.join(OUT,u),'rb').read()).hexdigest() for u in pre if u!='./'}
+assert '__HASHES__' in tpl,'sw.template.js lacks __HASHES__'
+open(os.path.join(OUT,'sw.js'),'w').write(tpl.replace('__VER__',ver).replace('__HASHES__',json.dumps(hashes,sort_keys=True)))
 print('BUILD OK',ver,'%.2f MB page'%(len(page.encode())/1e6),'parts:',len(glob.glob(os.path.join(H,'parts','*'))))

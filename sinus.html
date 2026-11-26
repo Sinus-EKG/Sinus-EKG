@@ -8440,12 +8440,7 @@ const APP={prompt:null,reg:null,
     msg.textContent='All '+REAL.recs.length+' real ECGs are saved on this device.';lsSet('sinus_offline','1');},
   async repair(){try{const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)));const rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(r=>r.unregister()));}catch(e){}toast('Repaired: reloading (your progress is kept)');setTimeout(()=>location.reload(),700);}};
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();APP.prompt=e;});
-if(APP.sw()){addEventListener('load',()=>{const swHad=!!navigator.serviceWorker.controller;navigator.serviceWorker.register('sw.js').then(reg=>{APP.reg=reg;
-  const ask=w=>{const s=document.querySelector('.kit-snack')||document.body.appendChild(Object.assign(document.createElement('div'),{className:'kit-snack'}));s.innerHTML='<span>A new version of Sinus is ready.</span><button>Update</button>';s.classList.add('show');s.querySelector('button').onclick=()=>{w.postMessage('skip');};};
-  if(reg.waiting&&navigator.serviceWorker.controller)ask(reg.waiting);
-  reg.addEventListener('updatefound',()=>{const w=reg.installing;if(!w)return;w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)ask(w);});});
-  let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!swHad)return;reloaded=true;location.reload();}); /* first visit: clients.claim() is not an update, no reload */
-  setInterval(()=>reg.update().catch(()=>{}),30*60000);}).catch(()=>{});});}
+/* service worker registration and the update banner: parts/95-sw.js (lane 8, 26/11/2026: hash-verified install, update held during a task) */
 if(APP.standalone())document.documentElement.classList.add('is-app');
 
 applyFx();
