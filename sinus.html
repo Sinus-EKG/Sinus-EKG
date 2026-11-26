@@ -4552,8 +4552,8 @@ function answer(id,btn){
   qv.showFocusBtn(!RR||!!(RR.beats&&RR.beats.length)); qv.setFocus(!RR);
   const warn=!ok&&Q.conf==='sure'&&dangerOf(p.id)==='red'?'<p class="flag-hi">You were sure, and this one can kill. Add it to your danger drills.</p>':'';
   let extra='';
-  if(ok){const others=Q.opts.filter(x=>x!==p.id).map(x=>PAT[x]);const right=p.look[Math.floor(Math.random()*p.look.length)];
-    const wrongs=typeof qzClinchWrongs==='function'?qzClinchWrongs(p,right,others,qv.data()):shuffle(others.map(o=>o.look[Math.floor(Math.random()*o.look.length)])).slice(0,3);Q.clinch=right;
+  if(ok){const others=Q.opts.filter(x=>x!==p.id).map(x=>PAT[x]);let right=p.look[Math.floor(Math.random()*p.look.length)];
+    const wrongs=typeof qzClinchWrongs==='function'?qzClinchWrongs(p,right,others,qv.data()):shuffle(others.map(o=>o.look[Math.floor(Math.random()*o.look.length)])).slice(0,3);right=lint_fitRight(p.look,right,wrongs);Q.clinch=right;
     extra='<div class="clinch"><b>Which feature clinched it?</b><div class="cl-opts">'+shuffle([right].concat(wrongs)).map(f=>'<button class="opt sm" data-f="'+esc(f)+'">'+esc(f)+'</button>').join('')+'</div></div>';}
   else {const q=PAT[id],du=duelFor(p.id,id);
     extra='<div class="contrast"><h3 class="ch" style="font-size:15px;margin:0">Side by side: what you chose ('+esc(q.name)+')</h3><div id="qCmp"></div>'+(du?'<b>How to tell them apart</b><ul class="bul">'+du.t.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>':'<div class="cmp2"><div><b>'+esc(p.name)+'</b><ul class="bul">'+p.look.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div><div><b>'+esc(q.name)+'</b><ul class="bul">'+q.look.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div></div>')+'</div>';}
@@ -7533,11 +7533,11 @@ function makeKnow(pid){const d=DEEP[pid],p=PAT[pid];if(!d||!p)return null;const 
   const type=types[Math.floor(Math.random()*types.length)];const same=PATS.filter(x=>x.id!==pid&&DEEP[x.id]&&x.mod===p.mod);const any=PATS.filter(x=>x.id!==pid&&DEEP[x.id]);
   const pick=(pool,f,n,bad)=>{const out=[];shuffle(pool.slice()).forEach(x=>{if(out.length<n){const v=f(x);if(v&&!out.includes(v)&&!(bad&&bad(v)))out.push(v);}});return out;};
   let q,right,wrong,explain;
-  if(type==='act'){q='What is the most appropriate first action for this ECG?';right=ACTS.find(a=>a[0]===actOf(pid))[1];wrong=shuffle(ACTS.filter(a=>a[0]!==actOf(pid)).map(a=>a[1])).slice(0,3);explain=p.name+'. '+p.pearl;}
+  if(type==='act'){q='What is the most appropriate first action for this ECG?';right=ACTS.find(a=>a[0]===actOf(pid))[1];wrong=shuffle(ACTS.filter(a=>a[0]!==actOf(pid)).map(a=>a[1])).slice(0,3);explain=(ACTS_LONG[actOf(pid)]?ACTS_LONG[actOf(pid)]+'. ':'')+p.name+'. '+p.pearl;}
   else if(type==='mech'){q='Which mechanism best explains this pattern: '+p.name+'?';right=sent1(d.mech);wrong=pick(same.length>=3?same:any,x=>sent1(DEEP[x.id].mech),3);explain=d.mech;}
   else if(type==='where'){q='In '+p.name+', where does the impulse start or what is the heart doing electrically?';right=sent1(d.where);wrong=pick(same.length>=3?same:any,x=>sent1(DEEP[x.id].where),3);explain=d.where;}
   else{const mine=kwords(d.causes.join(' '));q='Which of these is a recognised cause of '+p.name+'?';right=d.causes[Math.floor(Math.random()*Math.min(3,d.causes.length))];
-    wrong=pick(any.filter(x=>x.mod!==p.mod),x=>DEEP[x.id].causes[0],3,v=>[...kwords(v)].some(w=>mine.has(w)));explain='Causes of '+p.name+': '+d.causes.join('; ')+'.';}
+    wrong=pick(any.filter(x=>x.mod!==p.mod),x=>DEEP[x.id].causes[0],3,v=>[...kwords(v)].some(w=>mine.has(w)));right=lint_fitRight(d.causes.slice(0,3),right,wrong);explain='Causes of '+p.name+': '+d.causes.join('; ')+'.';}
   if(wrong.length<3)return null;const opts=shuffle([right].concat(wrong));
   return {kind:'know',id:pid,primary:pid,qt:type,q,opts,okKey:String(opts.indexOf(right)),explain};}
 function knowItems(pool,n){const out=[];shuffle(pool.filter(id=>DEEP[id])).forEach(id=>{if(out.length<n){const k=makeKnow(id);if(k)out.push(k);}});return out;}
@@ -7746,7 +7746,10 @@ mxInit();
 const RHC=[['sinus','Sinus rhythm (incl. brady/tachy/arrhythmia)'],['af','Atrial fibrillation'],['flutter','Atrial flutter'],['svt','Supraventricular tachycardia (AVNRT, AVRT, atrial tachycardia, MAT)'],['ectopy','Sinus with ectopics (PACs/PVCs)'],['block','AV block (2nd or 3rd degree)'],['junc','Junctional rhythm (narrow escape or accelerated)'],['vt','Ventricular rhythm (VT, AIVR or idioventricular escape)'],['arrest','VF / torsades / asystole / PEA'],['paced','Paced rhythm']];
 const RHY_OF={af:'af',afslow:'af',afbbb:'af',preaf:'af',ashman:'af',flutter:'flutter',atblock:'svt',svt:'svt',avrt:'svt',antidromic:'svt',eat:'svt',mat:'svt',svtab:'svt',pac:'ectopy',abig:'ectopy',bpac:'ectopy',pvc:'ectopy',pvcmulti:'ectopy',pjc:'ectopy',ectopic:'sinus',
  mob1:'block',mob2:'block',avb21:'block',chb:'block',hgavb:'block',infchb:'block',junc:'junc',accjunc:'junc',ivr:'vt',aivr:'vt',vt:'vt',vtcf:'vt',pvt:'vt',pseudovt:'sinus',vf:'arrest',finevf:'arrest',tdp:'arrest',asys:'arrest',pasys:'arrest',pea:'arrest',paced:'paced',dual:'paced',aai:'paced',pacedmi:'paced',pmt:'paced',loc:'paced',undersense:'paced',ftp:'paced',sss:'sinus',sinewave:'junc',bbtox:'sinus',ccbtox:'block',bidir:'vt',arvc:'ectopy'};
-const ACTS=[['cath','Activate cath lab / STEMI pathway'],['pads','Pads on, atropine/pacing or cardioversion ready'],['acls','Start ACLS: defibrillate or CPR now'],['adeno','Vagal manoeuvres then adenosine (if stable)'],['drug','Immediate specific treatment: correct the cause or give the antidote (e.g. calcium for hyperkalaemia, magnesium for torsades, toxicology treatment)'],['serial','Urgent bedside work-up now: troponin, serial ECGs, echo, senior review'],['workup','Same-day work-up or referral (echo, Holter, electrolytes)'],['none','No urgent action: document, compare with old ECG']];
+/* lane 8 (26/11/2026): option labels balanced in length (tests/suite-lint-bank.py: the right answer must not be the longest);
+   the full wording, with its examples, is kept in ACTS_LONG and shown in the feedback */
+const ACTS=[['cath','Activate the cath lab / STEMI pathway now'],['pads','Pads on; atropine, pacing or cardioversion ready'],['acls','Start ACLS now: defibrillate or start CPR'],['adeno','Vagal manoeuvres, then adenosine if stable'],['drug','Treat the cause at once or give the antidote'],['serial','Urgent work-up now: troponin, serial ECGs, echo'],['workup','Same-day work-up or referral: echo, Holter, bloods'],['none','No urgent action: document, compare with old ECG']];
+const ACTS_LONG={drug:'Immediate specific treatment: correct the cause or give the antidote (e.g. calcium for hyperkalaemia, magnesium for torsades, toxicology treatment)',serial:'Urgent bedside work-up now: troponin, serial ECGs, echo, senior review',workup:'Same-day work-up or referral (echo, Holter, electrolytes)'};
 const ACT_OF={inf:'cath',ant:'cath',lat:'cath',antlat:'cath',post:'cath',infpost:'cath',rvmi:'cath',hyperacute:'cath',dewinter:'cath',sgarbossa:'cath',tombstone:'cath',subtleinf:'cath',infchb:'cath',pacedmi:'cath',evolvingmi:'cath',subendo:'cath',
  wellens:'serial',nstemi:'serial',oldmi:'none',lvaneurysm:'workup',peri:'workup',ber:'none',
  vt:'pads',vtcf:'pads',pvt:'acls',svtab:'pads',antidromic:'pads',svt:'adeno',avrt:'adeno',preaf:'pads',chb:'pads',mob2:'pads',avb21:'pads',hgavb:'pads',pasys:'pads',sss:'workup',ivr:'pads',alternans:'serial',pe:'serial',cnst:'serial',ivr:'pads',
@@ -8443,12 +8446,7 @@ const APP={prompt:null,reg:null,
     msg.textContent='All '+REAL.recs.length+' real ECGs are saved on this device.';lsSet('sinus_offline','1');},
   async repair(){try{const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)));const rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(r=>r.unregister()));}catch(e){}toast('Repaired: reloading (your progress is kept)');setTimeout(()=>location.reload(),700);}};
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();APP.prompt=e;});
-if(APP.sw()){addEventListener('load',()=>{const swHad=!!navigator.serviceWorker.controller;navigator.serviceWorker.register('sw.js').then(reg=>{APP.reg=reg;
-  const ask=w=>{const s=document.querySelector('.kit-snack')||document.body.appendChild(Object.assign(document.createElement('div'),{className:'kit-snack'}));s.innerHTML='<span>A new version of Sinus is ready.</span><button>Update</button>';s.classList.add('show');s.querySelector('button').onclick=()=>{w.postMessage('skip');};};
-  if(reg.waiting&&navigator.serviceWorker.controller)ask(reg.waiting);
-  reg.addEventListener('updatefound',()=>{const w=reg.installing;if(!w)return;w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)ask(w);});});
-  let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||!swHad)return;reloaded=true;location.reload();}); /* first visit: clients.claim() is not an update, no reload */
-  setInterval(()=>reg.update().catch(()=>{}),30*60000);}).catch(()=>{});});}
+/* service worker registration and the update banner: parts/95-sw.js (lane 8, 26/11/2026: hash-verified install, update held during a task) */
 if(APP.standalone())document.documentElement.classList.add('is-app');
 
 applyFx();
@@ -9793,7 +9791,8 @@ function md_gestBuild(host){
 
 /* ================= 4. ER CASES ================= */
 const MD_CASE_IDS=['nsr','sbrady','stachy','ber','af','flutter','svt','pvc','avb1','mob1','mob2','chb','rbbb','lbbb','wpw','vt','tdp','inf','ant','lat','post','rvmi','wellens','dewinter','hyperacute','subendo','nstemi','peri','hyperk','hypok','lqt','brugada','pe','hypothermia','junc','sgarbossa','tca','myocarditis','hcm','svtab','avb21','takotsubo','digoxin','lvh'];
-const MD_DISP=[['dc','Treat and discharge with follow-up'],['obs','Observe and repeat the ECG'],['xfer','Call the ER-specialist centre for transfer'],['stemi','Activate the STEMI pathway']];
+/* lane 8 (26/11/2026): labels balanced in length and shown in a shuffled order per case (tests/suite-lint-bank.py) */
+const MD_DISP=[['dc','Treat, discharge, arrange follow-up'],['obs','Observe on the monitor, repeat the ECG'],['xfer','Transfer: call the ER-specialist centre'],['stemi','Activate the STEMI pathway (cath lab)']];
 /* disposition truth: [best, also acceptable] — reasoned from dangerOf + the pattern */
 const MD_DISPO={svt:['obs','dc'],avrt:['obs','dc'],af:['xfer','obs'],flutter:['xfer','obs'],stachy:['obs'],peri:['obs','xfer'],lbbb:['obs','xfer'],hypok:['obs','xfer'],lqt:['obs','xfer'],
   brugada:['xfer','obs'],junc:['obs','xfer'],hcm:['xfer','obs'],wpw:['dc','obs'],mob1:['dc','obs'],digoxin:['obs','dc'],lvh:['dc'],pvc:['dc','obs'],sbrady:['dc'],avb1:['dc'],rbbb:['dc'],ber:['dc'],nsr:['dc'],
@@ -9861,8 +9860,8 @@ function md_casesBuild(host){
     const steps=[
       {t:'1 · Read',q:'What does the ECG show?',opts:()=>md_opts(id,ids,r,4,cs.D).map(x=>[x,md_qn(x)]),ok:[id],why:(x,ok)=>(ok?'Yes: '+md_first((p.look||[])[0]||p.sum):'It is '+md_qn(id)+': '+md_first((p.look||[])[0]||p.sum))+(cs.reveal?' '+cs.reveal:'')},
       {t:'2 · Urgency',q:'How urgent is this?',opts:()=>MD_URG,ok:[dangerOf(id)],why:()=>({red:'Act now: this can deteriorate within minutes.',amber:'Same day: needs attention and a plan before the patient leaves your care.',green:'Routine: benign or expected; document and follow up.'})[dangerOf(id)]},
-      {t:'3 · First action',q:'What do you do first?',opts:()=>{const a=actOf(id);return md_shuf([a].concat(md_shuf(ACTS.map(x=>x[0]).filter(x=>x!==a),r).slice(0,3)),r).map(k=>[k,ACTS.find(x=>x[0]===k)[1]]);},ok:[actOf(id)],why:()=>ACTS.find(x=>x[0]===actOf(id))[1]+'. '+md_first(p.pearl||'')},
-      {t:'4 · Disposition',q:'Where does this patient go?',opts:()=>MD_DISP,ok:md_dispo(id),why:()=>{const d=md_dispo(id)[0];return MD_IDWHY[id]||MD_DWHY[d];}}];
+      {t:'3 · First action',q:'What do you do first?',opts:()=>{const a=actOf(id);return md_shuf([a].concat(md_shuf(ACTS.map(x=>x[0]).filter(x=>x!==a),r).slice(0,3)),r).map(k=>[k,ACTS.find(x=>x[0]===k)[1]]);},ok:[actOf(id)],why:()=>(ACTS_LONG[actOf(id)]||ACTS.find(x=>x[0]===actOf(id))[1])+'. '+md_first(p.pearl||'')},
+      {t:'4 · Disposition',q:'Where does this patient go?',opts:()=>md_shuf(MD_DISP,r),ok:md_dispo(id),why:()=>{const d=md_dispo(id)[0];return MD_IDWHY[id]||MD_DWHY[d];}}];
     function render(){right.innerHTML=res.map((x,k)=>'<div class="md-done '+(x.ok?'ok':'no')+'"><small>'+esc(steps[k].t)+'</small><b>'+esc(x.lab)+'</b>'+(x.ok?'':'<span>Best: '+esc(x.best)+'</span>')+'<p>'+esc(x.why)+'</p></div>').join('');
       if(step>=steps.length)return end();const s=steps[step];const opts=s.opts();
       const d=document.createElement('div');d.className='md-ask';d.innerHTML='<p class="eyebrow">Step '+esc(s.t)+'</p><h3 class="md-h">'+esc(s.q)+'</h3><div class="md-opts">'+opts.map((o,k)=>'<button class="opt" data-o="'+esc(o[0])+'"><span class="md-k">'+(k+1)+'</span>'+esc(o[1])+'</button>').join('')+'</div>';right.appendChild(d);
@@ -9919,7 +9918,7 @@ function md_calBuild(host){
       box.innerHTML='<p class="eyebrow">Problem '+(run.i+1)+' of 10 · lead II</p><h3 class="md-h">Measure the '+esc(MD_CAL[cur.m].n)+'</h3><p class="note">'+esc(MD_CAL[cur.m].how)+'. Any clear beat will do. Tap the strip to move the nearest handle; zoom in for precision.</p>';
       const vh=document.createElement('div');box.appendChild(vh);v=md_viewer(vh,'strip',{cal:true,noFull:true});v.set(cur.D,[],'Caliper strip');
       ctl.innerHTML='<p class="md-live">Calipers: <b class="md-cv">'+esc(v.calMs()+' ms')+'</b></p><div class="btnrow"><button class="btn md-lock">Lock in</button></div><div class="md-res"></div>';
-      const cv=ctl.querySelector('.md-cv');const iv=setInterval(()=>{if(!w.isConnected||phase!=='measure'){clearInterval(iv);return;}cv.textContent=v.calMs()+' ms';},150);
+      const cv=ctl.querySelector('.md-cv');/* lane 8: follows the handles (any input moves them: pointer, keys, controller) instead of a 150 ms poll */{let rq=0;const mo=new MutationObserver(()=>{if(!w.isConnected||phase!=='measure'){mo.disconnect();return;}if(rq)return;rq=requestAnimationFrame(()=>{rq=0;cv.textContent=v.calMs()+' ms';});});mo.observe(box,{attributes:true,subtree:true,attributeFilter:['style','aria-valuenow','transform','x','x1','x2','cx']});}
       ctl.querySelector('.md-lock').onclick=lock;try{const h=box.querySelector('.cl[role=slider]');if(h)h.focus({preventScroll:true});}catch(e){}}
     function lock(){if(phase!=='measure')return;phase='fb';const got=v.calMs();let off=0;try{const nr=md_calNearest(cur,v.calPos());if(nr.sp){cur.a=nr.sp.a;cur.b=nr.sp.b;cur.truth=nr.sp.truth;}off=nr.off;}catch(e){}
       const miss=off>80;const err=Math.abs(got-cur.truth);try{ctl.querySelector('.md-cv').textContent=got+' ms';}catch(e){}const pts=miss?0:err<=20?10:err<=40?6:err<=80?2:0;run.sc+=pts;run.res.push({m:cur.m,id:cur.id,got,truth:cur.truth,err,pts});
@@ -11668,7 +11667,8 @@ function rdBar(){if(!rdBarEl){rdBarEl=document.createElement('div');rdBarEl.id='
 document.addEventListener('keydown',e=>{try{if(!rdActive()||e.ctrlKey||e.metaKey||e.altKey||e.repeat)return;const t=e.target;if(t&&t.closest&&t.closest('textarea,select,[contenteditable="true"],input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=button])'))return;if(document.querySelector('.kit-sheet')||($('sheet')&&!$('sheet').hidden))return;
   const k=(e.key||'').toLowerCase();let own=false;try{const cv=$('v-concept');own=!!(cv&&!cv.hidden&&['normalornot','glue'].includes(curConcept));}catch(er){}
   if(k==='n'&&!e.shiftKey&&!own){e.preventDefault();rdNext();}else if(k==='s'&&e.shiftKey){e.preventDefault();rdSkip();}}catch(err){}});
-setInterval(()=>{try{rdSync();rdBar();}catch(e){}},1000);
+/* lane 8 (26/11/2026): event-driven, not a 1 s poll: after taps, keys, route changes and every save() (parts/95-perf.js) */
+{let q=0;const f=()=>{if(q)return;q=setTimeout(()=>{q=0;try{rdSync();rdBar();}catch(e){}},0);};['click','keyup','pointerup','visibilitychange','sinus:saved'].forEach(t=>document.addEventListener(t,f,true));addEventListener('hashchange',f);addEventListener('popstate',f);f();}
 /* caliper lock-ins count as problems */
 document.addEventListener('click',e=>{try{if(!rdActive())return;const b=e.target.closest('.md-lock');if(b&&!b.hidden&&!b.disabled)rdBump('cal');}catch(err){}},true);
 
@@ -15290,7 +15290,8 @@ async function syRun(manual){
 }
 document.addEventListener('visibilitychange',()=>{if(!syCfg())return;if(document.visibilityState==='hidden'){clearTimeout(syTimer);syLastRun=0;syRun(false);}else setTimeout(()=>syRun(false),1000);});
 window.addEventListener('online',()=>{if(syCfg())setTimeout(()=>syRun(false),1500);});
-setInterval(()=>{if(syCfg()&&document.visibilityState!=='hidden')syRun(false);},5*60000);
+/* lane 8 (26/11/2026): no 5-minute poll; pull when the person comes back from idle or saves, at most every 5 min (parts/95-perf.js) */
+['sinus:wake','sinus:saved'].forEach(t=>document.addEventListener(t,()=>{if(syCfg()&&document.visibilityState!=='hidden'&&Date.now()-syLastRun>5*60000)syRun(false);}));
 setTimeout(()=>{if(syCfg())syRun(false);},3000);
 
 function syUndo(){

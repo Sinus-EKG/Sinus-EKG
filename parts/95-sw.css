@@ -1,0 +1,7 @@
+/* ===== Lane 8 · update banner (parts/95-sw.js); sits above the undo snack ===== */
+.sw-upd{position:fixed;left:50%;bottom:calc(140px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:91;display:flex;align-items:center;gap:14px;width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box;background:var(--fg);color:var(--bg);padding:10px 12px 10px 16px;border-radius:14px;box-shadow:0 12px 30px -12px rgba(0,0,0,.5);font-size:14px}
+.sw-upd[hidden]{display:none}
+.sw-upd .sw-go{border:0;background:transparent;color:var(--accent);font-weight:700;min-height:44px;padding:0 8px;font:inherit;font-weight:700;cursor:pointer}
+.sw-upd .sw-go:disabled{opacity:.7;cursor:default}
+@media (min-width:900px){.sw-upd{bottom:84px}}
+html.px .sw-upd{border-radius:0;border:2px solid var(--accent);box-shadow:4px 4px 0 rgba(0,0,0,.6)}

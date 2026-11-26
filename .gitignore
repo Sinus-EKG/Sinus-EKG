@@ -4,3 +4,4 @@ real-src
 .gate.log
 __pycache__/
 .cloud-mass.png
+tests/wrappers.txt
