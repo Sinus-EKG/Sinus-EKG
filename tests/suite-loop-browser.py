@@ -48,6 +48,7 @@ def review(**kw):
                      {'q': 'note:' + WEEK, 'text': 'Use 40-minute Rounds.', 'action': {'kind': 'mix', 'minutes': 40}},
                      {'q': 'stall:gone:' + WEEK, 'text': 'Old pattern.', 'action': {'kind': 'lesson', 'patternId': 'nosuchpattern'}},
                      {'q': 'stall:x:' + WEEK, 'text': 'Start a deload.', 'action': {'kind': 'deload'}},
+                     {'q': 'stall:l:' + WEEK, 'text': 'Read the NSR lesson.', 'action': {'kind': 'lesson', 'patternId': 'nsr'}},
                      {'q': 'stall:d:' + WEEK, 'text': 'Drill VT.', 'action': {'kind': 'drill', 'patternId': 'vt'}}],
          'full': [{'title': 'Per pattern', 'lines': ['VT: 4 of 12.']}], 'shipped': [{'version': '2026.11.18', 'what': 'Fixed a crash.'}], 'needsYou': ['Decide on the plan length.']}
     r.update(kw)
@@ -73,7 +74,9 @@ with sync_playwright() as p:
         ok(pg.evaluate('typeof CLOOP==="object"&&typeof CLOOP.pending==="function"'), 'CLOOP is exposed')
         ok(pg.evaluate('CLOOP.pending()') == 0, 'nothing pending before any review')
         # an error the app did not catch → sinus_errlog (never in S)
-        pg.add_script_tag(content="setTimeout(()=>{throw new Error('loop test boom')},0);setTimeout(()=>{throw new Error('loop test boom')},5);Promise.reject(new TypeError('loop reject'))")
+        pg.add_script_tag(content="throw new Error('loop test boom')")
+        pg.add_script_tag(content="throw new Error('loop test boom')")
+        pg.add_script_tag(content="Promise.reject(new TypeError('loop reject'))")
         pg.wait_for_timeout(300)
         el = pg.evaluate("JSON.parse(localStorage.getItem('sinus_errlog')||'[]')")
         boom = [e for e in el if e.get('msg', '').endswith('loop test boom')]
@@ -131,7 +134,7 @@ with sync_playwright() as p:
         fd.add('sinus-review-2026-10-16.json', review(week={'start': '2026-10-09'}), [cd])  # file name and content disagree
         fd.add('notes.txt', 'x', [cd])
         r = pg.evaluate('CLOOP.sendNow()')
-        ok(r.get('reviews', {}).get('got') == 2 and r['reviews'].get('bad') == 4, 'reviews read: 2 kept, 4 refused: %r' % r.get('reviews'))
+        ok(r.get('reviews', {}).get('got') == 3 and r['reviews'].get('bad') == 4, 'reviews read: 3 kept (first, its -2 correction, the Google Doc), 4 refused: %r' % r.get('reviews'))
         st = json.loads(pg.evaluate("localStorage.getItem('sinus-ecg-v1')"))
         revs = st.get('cloop', {}).get('reviews', {})
         ok(sorted(revs) == ['2026-10-23', WEEK], 'synced review records by week: %r' % sorted(revs))
@@ -178,7 +181,7 @@ with sync_playwright() as p:
         pg.evaluate("document.querySelector('[data-cld]').click()")
         pg.wait_for_timeout(100)
         st6 = json.loads(pg.evaluate("localStorage.getItem('sinus-ecg-v1')"))
-        ok('dismissed' in st6['cloop']['reviews'][WEEK]['done'].values(), 'dismiss is recorded')
+        ok(st6['cloop']['reviews'][WEEK]['done'].get('stall:l:' + WEEK) == 'dismissed', 'dismiss is recorded')
         ok(btn('Drill'), 'drill button')
         pg.wait_for_timeout(400)
         ok(pg.evaluate('location.hash') == '#quiz', 'drill opens the quiz: %s' % pg.evaluate('location.hash'))
