@@ -5,7 +5,7 @@
    controlled (an update), never on the first visit (part-kit.js). */
 const VER='__VER__';
 const SHELL='sinus-shell-'+VER, REALC='sinus-real-v1', FONTS='sinus-fonts-v1';
-const PRE=["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-180.png", "icons/favicon-32.png", "real/index.json"];
+const PRE=["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-180.png", "icons/favicon-32.png", "icons/icon-128.png", "icons/icon-256.png", "icons/icon.svg", "real/index.json"];
 const ALIAS={'./':'index.html'};   /* key → file it is stored from (one fetch, two cache keys) */
 const offline=(what)=>new Response(what==='page'?'<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sinus</title><p style="font:16px system-ui;padding:24px">Sinus is offline and this page is not saved yet. Connect once and it will work offline.</p>':'',{status:503,statusText:'Offline',headers:{'Content-Type':what==='page'?'text/html; charset=utf-8':'text/plain'}});
 self.addEventListener('install',e=>{e.waitUntil((async()=>{const c=await caches.open(SHELL);

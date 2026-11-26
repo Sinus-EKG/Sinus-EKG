@@ -11,7 +11,7 @@
   "fullscreen"
  ],
  "orientation": "any",
- "background_color": "#f4f3f2",
+ "background_color": "#1c070b",
  "theme_color": "#e8620c",
  "categories": [
   "education",
@@ -19,14 +19,34 @@
  ],
  "icons": [
   {
+   "src": "icons/icon-128.png",
+   "sizes": "128x128",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
    "src": "icons/icon-192.png",
    "sizes": "192x192",
-   "type": "image/png"
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icons/icon-256.png",
+   "sizes": "256x256",
+   "type": "image/png",
+   "purpose": "any"
   },
   {
    "src": "icons/icon-512.png",
    "sizes": "512x512",
-   "type": "image/png"
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icons/icon.svg",
+   "sizes": "any",
+   "type": "image/svg+xml",
+   "purpose": "any"
   },
   {
    "src": "icons/maskable-512.png",
@@ -42,7 +62,15 @@
    "icons": [
     {
      "src": "icons/icon-192.png",
-     "sizes": "192x192"
+     "sizes": "192x192",
+     "type": "image/png",
+     "purpose": "any"
+    },
+    {
+     "src": "icons/icon-512.png",
+     "sizes": "512x512",
+     "type": "image/png",
+     "purpose": "any"
     }
    ]
   },
@@ -52,7 +80,15 @@
    "icons": [
     {
      "src": "icons/icon-192.png",
-     "sizes": "192x192"
+     "sizes": "192x192",
+     "type": "image/png",
+     "purpose": "any"
+    },
+    {
+     "src": "icons/icon-512.png",
+     "sizes": "512x512",
+     "type": "image/png",
+     "purpose": "any"
     }
    ]
   },
@@ -62,7 +98,15 @@
    "icons": [
     {
      "src": "icons/icon-192.png",
-     "sizes": "192x192"
+     "sizes": "192x192",
+     "type": "image/png",
+     "purpose": "any"
+    },
+    {
+     "src": "icons/icon-512.png",
+     "sizes": "512x512",
+     "type": "image/png",
+     "purpose": "any"
     }
    ]
   },
@@ -72,7 +116,15 @@
    "icons": [
     {
      "src": "icons/icon-192.png",
-     "sizes": "192x192"
+     "sizes": "192x192",
+     "type": "image/png",
+     "purpose": "any"
+    },
+    {
+     "src": "icons/icon-512.png",
+     "sizes": "512x512",
+     "type": "image/png",
+     "purpose": "any"
     }
    ]
   }
