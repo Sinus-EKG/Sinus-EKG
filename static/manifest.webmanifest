@@ -1,0 +1,80 @@
+{
+ "id": "/sinus-app",
+ "name": "Sinus — ECG trainer",
+ "short_name": "Sinus",
+ "description": "Learn to read ECGs: animated physiology, 124 patterns, 1,000+ real ECGs, a 12-week plan.",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "display_override": [
+  "standalone",
+  "fullscreen"
+ ],
+ "orientation": "any",
+ "background_color": "#f4f3f2",
+ "theme_color": "#e8620c",
+ "categories": [
+  "education",
+  "medical"
+ ],
+ "icons": [
+  {
+   "src": "icons/icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png"
+  },
+  {
+   "src": "icons/icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png"
+  },
+  {
+   "src": "icons/maskable-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ],
+ "shortcuts": [
+  {
+   "name": "Daily session",
+   "url": "./#plan",
+   "icons": [
+    {
+     "src": "icons/icon-192.png",
+     "sizes": "192x192"
+    }
+   ]
+  },
+  {
+   "name": "Reading room",
+   "url": "./#room",
+   "icons": [
+    {
+     "src": "icons/icon-192.png",
+     "sizes": "192x192"
+    }
+   ]
+  },
+  {
+   "name": "Quiz",
+   "url": "./#quiz",
+   "icons": [
+    {
+     "src": "icons/icon-192.png",
+     "sizes": "192x192"
+    }
+   ]
+  },
+  {
+   "name": "Bedside monitor",
+   "url": "./#concept-monitor",
+   "icons": [
+    {
+     "src": "icons/icon-192.png",
+     "sizes": "192x192"
+    }
+   ]
+  }
+ ]
+}
