@@ -9867,7 +9867,9 @@ function md_casesBuild(host){
         res.push({ok,lab,best,why:s.why(x,ok)});vib(ok?12:[30,40,30]);chime(ok);step++;render();});}
     function end(){const sc=res.filter(x=>x.ok).length;const prev=st.done[id];st.done[id]={best:Math.max(prev?prev.best:0,sc),last:dkey(),n:(prev?prev.n:0)+1};st.hist.push([dkey(),id,sc]);if(st.hist.length>80)st.hist.splice(0,st.hist.length-80);save();
       const d=document.createElement('div');d.className='md-fb '+(sc>=3?'ok':'no');d.innerHTML='<p><b>'+esc(sc+' of 4')+'</b> · '+esc(md_qn(id))+' '+md_dchip(id)+'</p><div class="btnrow"><button class="btn md-n">Next case →</button><button class="btn ghost md-l">All cases</button><button class="btn ghost md-ls">Lesson</button></div>';right.appendChild(d);
-      d.querySelector('.md-n').onclick=()=>play((i+1)%ids.length);d.querySelector('.md-l').onclick=list;d.querySelector('.md-ls').onclick=()=>go('lesson',id);}
+      d.querySelector('.md-n').onclick=()=>play((i+1)%ids.length);d.querySelector('.md-l').onclick=list;d.querySelector('.md-ls').onclick=()=>go('lesson',id);
+      /* lane 5: lets the hand-off part add "Send to reasoning app" (parts/70-links.js) */
+      try{document.dispatchEvent(new CustomEvent('sinus:case-done',{detail:{box:d,i,n:ids.length,id,vig:cs.vig||p.vig||'',vit:v,D:cs.D,steps:steps.map(x=>x.t),res:res.slice(),score:sc}}));}catch(e){}}
     md_keys(w,e=>{const a=right.querySelector('.md-ask');if(a&&/^[1-4]$/.test(e.key)){const b=a.querySelectorAll('[data-o]')[+e.key-1];if(b){e.preventDefault();b.click();}}});
     render();}
   list();}
@@ -11604,7 +11606,7 @@ const RD_MINS=[10,25,40];
 const RD_COST={due:.6,cod:3,cal:1.5,est:1,mix:.6,room:3,teach:3.5};
 const RD_BASE={10:{due:4,cod:0,cal:1,est:2,mix:4,room:1,teach:1},25:{due:8,cod:0,cal:2,est:3,mix:8,room:1,teach:1},40:{due:12,cod:0,cal:3,est:5,mix:12,room:2,teach:2}};
 let rdMsg='';
-function rdMinOf(m){m=+m;if(RD_MINS.includes(m))return m;try{const u=S.ui&&+S.ui.mixMin;if(RD_MINS.includes(u))return u;}catch(e){}return 25;}
+function rdMinOf(m){m=+m;if(RD_MINS.includes(m))return m;try{const L=window.CITRUSPLAN&&CITRUSPLAN.today();if(L&&L.light)return L.min;}catch(e){}try{const u=S.ui&&+S.ui.mixMin;if(RD_MINS.includes(u))return u;}catch(e){}return 25;}
 function rdPlanOf(r){if(r&&Array.isArray(r.plan)&&r.plan.length)return r.plan;return RD_LEGS.map(L=>({k:L.id,n:L.n}));}
 function rdCur(r){const P=rdPlanOf(r)[r.leg];if(!P)return null;const L=RD_LEGS.find(x=>x.id===P.k);if(!L)return null;const o=Object.create(L);o.n=P.n;o.P=P;return o;}
 function rdTot(r){const pl=rdPlanOf(r);return Math.max(1,pl.length-pl.filter((P,i)=>r.st[i]==='na').length);}
@@ -11676,7 +11678,7 @@ function rdRoundBuild(host){const r=rdR();const on=rdActive();const today=dkey()
   else if(on)status='<p class="note">In progress: leg '+(r.leg+1)+' of '+rdPlanOf(r).length+' ('+esc(cur?cur.name:'')+')'+(r.min?' · '+r.min+'-minute round':'')+'. Started '+esc(new Date(r.start||rdNow()).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}))+'.</p>';
   else if(lt&&lt.short)status='<p class="note rd-short">Short round today ('+lt.legs+' of '+(lt.tot||RD_LEGS.length)+'), not counted. Do at least '+(lt.need||4)+' legs for it to count.</p>'+chooser;
   else status='<p class="note">Not started today. Choose your time: the legs and counts scale to fit, and a short round keeps your weakest skills.</p>'+chooser;
-  card(w,'<p class="eyebrow">Today · '+esc(rdDmy(today))+'</p><h3 class="md-h">The Round</h3>'+status+
+  card(w,'<p class="eyebrow">Today · '+esc(rdDmy(today))+'</p><h3 class="md-h">The Round</h3>'+(window.CITRUSPLAN&&!on?CITRUSPLAN.lineHtml():'')+status+
     '<div class="md-stats sm">'+md_stat('Rounds this month',st,'Rounds this month|Rounds that counted since the 1st of this month.|')+md_stat('Rounds done',Object.keys(r.done).length)+md_stat('Last accuracy',r.last&&r.last.acc!=null?r.last.acc+'%':'–')+'</div>'+
     '<div class="btnrow"><button class="btn rd-big" data-rd="start">'+(on?'Continue the round →':doneToday?'Another round →':'Start the round →')+'</button>'+(on?'<button class="btn ghost" data-rd="stop">Stop</button>':'')+'</div>','rd-today');
   const plan=card(w,'','rd-plancard');
@@ -12489,7 +12491,7 @@ function d3_plan(min){min=d3_N[min]?min:10;const P=d3_pstats();const any=Object.
   /* still short (everything seen): least accurate seen patterns */
   Object.keys(P).sort((a,b)=>P[a].acc-P[b].acc).forEach(id=>{if(items.length<N-realN)add(id,'weak');});
   for(let i=0;i<realN;i++)items.push({id:'real',k:'real'});
-  const q=d3_shuf(items.slice());if(q.length>1&&q[0].k==='cm'){const j=q.findIndex(x=>x.k!=='cm');if(j>0)[q[0],q[j]]=[q[j],q[0]];}
+  const q=d3_shuf(items.slice());try{if(window.CITRUSPLAN&&CITRUSPLAN.today().light)q.sort((a,b)=>(b.k==='due')-(a.k==='due'));}catch(e){}if(q.length>1&&q[0].k==='cm'){const j=q.findIndex(x=>x.k!=='cm');if(j>0)[q[0],q[j]]=[q[j],q[0]];}
   const cnt={due:0,weak:0,new:0,real:0,cm:0};items.forEach(x=>cnt[x.k]++);
   return {q,cnt,N:items.length,base:!any,min};}
 function d3_planText(p){const c=p.cnt,o=[];if(p.base)o.push(c.new+c.weak+' across every area');else{if(c.due)o.push(c.due+' due');if(c.weak)o.push(c.weak+' weak-spot');if(c.new)o.push(c.new+' new');}
@@ -12528,7 +12530,7 @@ function d3_mixEnd(){D3M.on=false;D3M.paused=false;d3_bar();
 try{const qs=$('qScope');if(qs)qs.addEventListener('click',e=>{if(e.target.closest('[data-scope]')&&D3M.on)d3_mixPause(true);},true);}catch(e){}
 
 /* ---- rendering ---- */
-function d3_uiMin(){const u=uiS();const m=+u.mixMin;return d3_N[m]?m:10;}
+function d3_uiMin(){try{const L=window.CITRUSPLAN&&CITRUSPLAN.today();if(L&&L.light&&d3_N[L.min])return L.min;}catch(e){}const u=uiS();const m=+u.mixMin;return d3_N[m]?m:10;}
 function d3_greet(){const h=new Date().getHours();return h<5?'Good evening':h<12?'Good morning':h<18?'Good afternoon':'Good evening';}
 function d3_readToday(){const t0=d3_t0();let n=0;try{const L=mxS().log;if(Array.isArray(L))n=L.filter(r=>Array.isArray(r)&&r[0]>=t0).length;}catch(e){}
   const c=Array.isArray(S.conf)?S.conf.filter(r=>Array.isArray(r)&&r[0]>=t0).length:0;return Math.max(n,c);}
@@ -12543,7 +12545,7 @@ function d3_mixCard(){const min=d3_uiMin();const p=d3_plan(min);const last=S.d03
   const alt=[];if(CON.round)alt.push('<button class="tool" data-d3c="round">The Round · ~25 min</button>');
   try{if(S.mx&&S.mx.start)alt.push('<button class="tool" data-d3plan>12-week plan session</button>');}catch(e){}
   if(p.base)return '<div class="eyebrow">Today’s mix</div><h2 class="d3-h">Start with a baseline</h2><p class="d3-mixline">10 ECGs across every skill area'+(p.cnt.real?', including a real recording':'')+'. About 10 minutes. No score to beat: it just shows Sinus where to start.</p><div class="btnrow">'+(res||'<button class="btn" data-d3base>Take the 10-ECG baseline</button>')+'</div>'+(alt.length?'<div class="d3-alt">'+alt.join('')+'</div>':'');
-  return '<div class="eyebrow">Today’s mix</div><div class="d3-mins seg" role="group" aria-label="Minutes available">'+[10,25,40].map(m=>'<button class="tool" data-d3min="'+m+'" aria-pressed="'+(m===min)+'">'+m+' min</button>').join('')+'</div>'+
+  return '<div class="eyebrow">Today’s mix</div>'+(window.CITRUSPLAN?CITRUSPLAN.lineHtml():'')+'<div class="d3-mins seg" role="group" aria-label="Minutes available">'+[10,25,40].map(m=>'<button class="tool" data-d3min="'+m+'" aria-pressed="'+(m===min)+'">'+m+' min</button>').join('')+'</div>'+
     '<p class="d3-mixline"><b>'+p.N+' ECGs</b> · '+esc(d3_planText(p))+'</p>'+
     (last?'<p class="note">Earlier today: '+last.c+' of '+last.n+' right.</p>':'')+
     '<div class="btnrow">'+(res||'')+'<button class="btn'+(res?' ghost':'')+'" data-d3start>'+(res?'New mix':'Start mix')+'</button></div>'+(alt.length?'<div class="d3-alt">'+alt.join('')+'</div>':'');}
@@ -15194,14 +15196,17 @@ function syDev(){let d=null;try{d=localStorage.getItem('sinus_dev');}catch(e){}
   return d;}
 function syCfg(){const c=syGet(SYK);if(!c)return null;c.dev=syDev();if(c.kind==='drive')return c.client?c:null;return c.owner&&c.repo&&c.token?c:null;}
 /* ---- Google sign-in (Google Identity Services token model) ----
-   Scopes: drive.appdata (the hidden sync file) and drive.file (only files and folders Sinus itself
-   creates: My Apps/hub/sinus). No drive.readonly: Sinus cannot list or read anything else in Drive. */
-const GSCOPE='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file';let gsiLoad=null,gsiClient=null;
+   Scopes (26/11/2026, lane 5, owner approved): drive.appdata (the hidden sync file) plus the full drive scope, the family
+   standard on the shared client (HUB.md), so Sinus can read Citrus's plan.json and find folders by tag. It writes only in
+   its own folder, Yuzu's collection/inbox and the hand-off folder. The granted scopes are kept (gscope); a token from the
+   older drive.file sign-in asks for one tap in Settings (never a popup by itself). */
+const GSCOPE='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive';
+const gFull=()=>{const c=syGet(SYK)||{};return !c.gneed&&String(c.gscope||'').split(/\s+/).includes('https://www.googleapis.com/auth/drive');};let gsiLoad=null,gsiClient=null;
 function gsiReady(){if(window.google&&google.accounts&&google.accounts.oauth2)return Promise.resolve();if(gsiLoad)return gsiLoad;
   gsiLoad=new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='https://accounts.google.com/gsi/client';sc.async=true;sc.onload=()=>res();sc.onerror=()=>{gsiLoad=null;rej(new Error('Could not load Google sign-in: you may be offline, or this page blocks Google (it does inside claude.ai). Use the Sinus app.'));};document.head.appendChild(sc);});return gsiLoad;}
 function gTok(){const c=syGet(SYK)||{};return c.gtok&&c.gexp&&Date.now()<c.gexp-60000?c.gtok:null;}
 async function gSignIn(interactive){const c=syGet(SYK)||{};if(!c.client)throw new Error('No Google client ID.');await gsiReady();
-  return new Promise((res,rej)=>{try{gsiClient=google.accounts.oauth2.initTokenClient({client_id:c.client,scope:GSCOPE,prompt:'',callback:r=>{if(r&&r.access_token){syUpd({gtok:r.access_token,gexp:Date.now()+(+r.expires_in||3600)*1000});res(r.access_token);}else rej(new Error((r&&r.error_description)||'Google did not return a token.'));},error_callback:e=>rej(new Error(e&&e.type==='popup_closed'?'Sign-in window closed before finishing.':e&&e.type==='popup_failed_to_open'?'The sign-in window was blocked: tap Sync now and allow pop-ups.':'Google sign-in failed.'))});
+  return new Promise((res,rej)=>{try{gsiClient=google.accounts.oauth2.initTokenClient({client_id:c.client,scope:GSCOPE,prompt:'',callback:r=>{if(r&&r.access_token){syUpd({gtok:r.access_token,gexp:Date.now()+(+r.expires_in||3600)*1000,gscope:String(r.scope||GSCOPE),gneed:false});res(r.access_token);}else rej(new Error((r&&r.error_description)||'Google did not return a token.'));},error_callback:e=>rej(new Error(e&&e.type==='popup_closed'?'Sign-in window closed before finishing.':e&&e.type==='popup_failed_to_open'?'The sign-in window was blocked: tap Sync now and allow pop-ups.':'Google sign-in failed.'))});
     gsiClient.requestAccessToken({prompt:''});}catch(e){rej(e);}});}
 async function gToken(interactive){const t=gTok();if(t)return t;if(!interactive)return null;return gSignIn(true);}
 function syUpd(p){const c=syGet(SYK)||{};Object.assign(c,p);sySet(SYK,c);return c;}
@@ -15296,7 +15301,7 @@ function syHtml(){
       (SY_GOK?'':'<p class="note"><b>Google sign-in only works in the Sinus app.</b> This copy runs inside claude.ai, which blocks Google’s sign-in window. Open the app (and install it from there), sign in once, and your progress syncs to every device. Here you can use GitHub instead.</p>')+
       '<details class="sy-how"><summary>Advanced: use a different Google client ID</summary><label class="sy-f"><span>Google OAuth client ID</span><input id="syClient" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="…apps.googleusercontent.com" value="'+esc(old.client||SY_GCLIENT)+'"></label><p class="note">Leave as is unless you made your own. It must list <span class="mono">https://sinus-ekg.github.io</span> in its authorised JavaScript origins.</p></details>'+
       (SY_GOK?'<div class="btnrow"><button class="btn" id="syGoog">Sign in with Google</button></div>':'<div class="btnrow"><a class="btn" href="https://sinus-ekg.github.io/Sinus-EKG/" target="_blank" rel="noopener">Open the Sinus app</a></div>')+'<p class="note sy-msg" id="syMsg" role="status"></p>'+
-      '<p class="note">Google permissions Sinus asks for: its hidden app-data folder (the sync file) and only the files and folders Sinus creates itself (your Sinus folder in Drive (Citrus › Learning › Medicine › ECG - Sinus once Citrus Maxima organises Drive; until then My Apps / hub / sinus): the status for Citrus Maxima and readable backups). It cannot list, open or read any of your other Drive files. The sign-in is kept only on this device.</p>';
+      '<p class="note">Google permissions: Sinus can see your Drive so it can read your Citrus plan and send cards to Yuzu; it only writes inside its own folder, Yuzu’s inbox and the hand-off folder. The sync file sits in a hidden app-data folder. The sign-in is kept only on this device.</p>';
     return '<div class="eyebrow">Sync across devices</div><p class="note">Keep your progress the same on phone, tablet and PC through a private GitHub repository that only you can see. Nothing is sent anywhere else.</p>'+pick+
       '<details class="sy-how"><summary>How to set it up (5 minutes, once)</summary><ol class="bul sy-steps">'+
       '<li>Sign in at github.com (a free account is fine).</li>'+
@@ -15366,7 +15371,9 @@ function hubStatus(){const today=dkey();const mx=S.mx&&S.mx.start?S.mx:null;cons
     drive:{byTag:true},
     extra:{planWeek:week,level:lv,realRead:rm.n||0,nightShift:night}};}
 async function hubFetch(url,o){const tok=await gToken(false);if(!tok)throw new Error('nosignin');const r=await fetch(url,Object.assign({cache:'no-store'},o,{headers:Object.assign({'Authorization':'Bearer '+tok},(o&&o.headers)||{})}));
-  if(r.status===401){syUpd({gtok:null,gexp:0});throw new Error('nosignin');}if(!r.ok)throw new Error('drive '+r.status);return (o&&o.blob)?r.blob():r.status===204?null:r.json();}
+  if(r.status===401){syUpd({gtok:null,gexp:0});throw new Error('nosignin');}
+  if(r.status===403){let m='';try{m=JSON.stringify(await r.clone().json());}catch(e){}if(/insufficient|scope/i.test(m)){syUpd({gneed:true});try{syPaint();}catch(e){}throw new Error('scope');}}
+  if(!r.ok)throw new Error('drive '+r.status);return (o&&o.blob)?r.blob():r.status===204?null:r.json();}
 async function hubFolder(name,parent){const q="name='"+name.replace(/'/g,"\\'")+"' and mimeType='application/vnd.google-apps.folder' and '"+parent+"' in parents and trashed=false";
   const j=await hubFetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id)');if(j.files&&j.files[0])return j.files[0].id;
   const c=await hubFetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,mimeType:'application/vnd.google-apps.folder',parents:[parent]})});return c.id;}
@@ -15385,14 +15392,20 @@ async function hubMk(name,parent,props){const c=await hubFetch(HUB_FILES+'?field
    My Apps/hub/sinus (tagged at once) → create My Apps/hub/sinus and tag it at once. Sinus never renames or moves it. */
 const HUB_TAG="appProperties has { key='citrusApp' and value='sinus' }";let hubChecked=false;
 async function hubTag(id){try{await hubFetch(HUB_FILES+'/'+id+'?fields=id',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({appProperties:{citrusApp:'sinus',sinus:'hubdir'}})});}catch(e){}}
+async function hubOldSinus(){const r=await hubFind(hubNameQ(HUB.root,'root'));const hb=r&&await hubFind(hubNameQ('hub',r.id));return hb?hubFind(hubNameQ('sinus',hb.id)):null;}
 async function hubTree(){const h=hubGet();
   if(h.apps){if(hubChecked)return h.apps;
     try{const f=await hubFetch(HUB_FILES+'/'+h.apps+'?fields=id,trashed,appProperties');hubChecked=true;
-      if(f&&!f.trashed){if(!f.appProperties||f.appProperties.citrusApp!=='sinus')await hubTag(f.id);return h.apps;}}
-    catch(e){if(e.message==='nosignin')throw e;}
+      if(f&&!f.trashed){
+        /* full Drive scope (26/11/2026): the oldest folder tagged citrusApp=sinus wins, so one Citrus made is used, not a twin */
+        if(gFull()){const t=await hubFind(HUB_TAG);if(t&&t.id!==h.apps){hubSet({apps:t.id,fid:null,own:false});return t.id;}}
+        if(!f.appProperties||f.appProperties.citrusApp!=='sinus')await hubTag(f.id);return h.apps;}}
+    catch(e){if(e.message==='nosignin'||e.message==='scope')throw e;}
     hubSet({apps:null,fid:null});}
   let dir=await hubFind(HUB_TAG);
-  if(!dir){dir=await hubFind("appProperties has { key='sinus' and value='hubdir' }")||await hubFind(hubNameQ('sinus'));if(dir)await hubTag(dir.id);}
+  if(!dir){dir=await hubFind("appProperties has { key='sinus' and value='hubdir' }")||await hubOldSinus();if(dir)await hubTag(dir.id);}
+  /* never create a folder while the sign-in cannot see the folders Citrus made (an older drive.file token): ask for a tap */
+  if(!dir&&!gFull())throw new Error('scope');
   let own=!!h.own;
   if(!dir){let root=await hubFind(hubNameQ(HUB.root,'root'));
     if(!root){root={id:await hubMk(HUB.root,'root',{sinus:'root'})};own=true;}
@@ -15409,7 +15422,7 @@ async function hubWrite(force){const c=syGet(SYK)||{};if(c.kind!=='drive'||!c.cl
       const r=await hubFetch('https://www.googleapis.com/upload/drive/v3/files'+(fid?'/'+fid:'')+'?uploadType=multipart&fields=id',{method:fid?'PATCH':'POST',headers:{'Content-Type':'multipart/related; boundary='+bnd},body});fid=r.id;};
     try{await put();}catch(e){if(/drive 404/.test(e.message)){hubSet({apps:null,fid:null});fid=null;apps=await hubTree();await put();}else throw e;}
     hubSet({fid,fp,at:Date.now(),ok:true,msg:'Shared with Citrus Maxima '+syFmt(new Date().toISOString())});}
-  catch(e){hubSet({ok:false,msg:e.message==='nosignin'?'Citrus: sign in to Google (Sync now) to share your status.':'Citrus: could not write the status file ('+e.message+').'});}
+  catch(e){hubSet({ok:false,msg:e.message==='nosignin'?'Citrus: sign in to Google (Sync now) to share your status.':e.message==='scope'?'Citrus: tap “Allow Drive access” above to share your status.':'Citrus: could not write the status file ('+e.message+').'});}
   finally{HUB.busy=false;syPaint();}}
 function hubSoon(force){clearTimeout(HUB.timer);HUB.timer=setTimeout(()=>hubWrite(force),force?500:10000);}
 /* triggers: after any save (throttled), after a finished daily session (forced), on return to the app */
@@ -15418,15 +15431,24 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 setTimeout(()=>hubWrite(false),6000);
 /* Settings line under the sync section */
 const _syHtml=syHtml;syHtml=function(){const h=_syHtml();const c=syCfg();if(!c||c.kind!=='drive')return h;const s=hubGet();
-  const own=s.own?'<span class="note">Google lets Sinus see only folders it made itself, so it could not see a “My Apps” folder made by another app and made its own My Apps / hub / sinus. Citrus Maxima moves the “sinus” folder into Citrus › Learning › Medicine on its daily Drive tidy; Sinus finds it by its tag wherever it goes, so you never need to move it yourself.</span>':'';
-  return h+'<div class="sy-hub"><b>Citrus Maxima</b><span class="note">'+esc(s.msg||'Sinus shares a one-line status (what is due and the minutes needed) with your scheduler through status.json in your Sinus folder in Drive (Citrus › Learning › Medicine › ECG - Sinus once Citrus Maxima organises Drive; until then My Apps / hub / sinus). Nothing else.')+'</span>'+own+'<div class="btnrow"><button class="tool sm" id="hubNow">Share now</button></div></div>';};
+  const own=s.own?'<span class="note">Sinus made its own My Apps / hub / sinus folder earlier. Citrus Maxima moves the “sinus” folder into Citrus › Learning › Medicine on its Drive tidy; Sinus finds it by its tag wherever it goes, so you never need to move it yourself.</span>':'';
+  return h+'<div class="sy-hub"><b>Citrus Maxima</b><span class="note">'+esc(s.msg||'Sinus shares a one-line status (what is due and the minutes needed) with your scheduler through status.json in your Sinus folder in Drive (Citrus › Learning › Medicine › ECG - Sinus once Citrus Maxima organises Drive; until then My Apps / hub / sinus). It reads Citrus’s plan.json for your shifts; cards go to Yuzu and cases to the reasoning app only as described below.')+'</span>'+own+'<div class="btnrow"><button class="tool sm" id="hubNow">Share now</button></div></div>';};
 const _syWire=syWire;syWire=function(sec){_syWire(sec);const b=sec.querySelector('#hubNow');if(b)b.onclick=async()=>{if(!gTok()){try{await gSignIn(true);}catch(e){toast(e.message);return;}}hubSet({fp:''});hubWrite(true);toast('Sharing with Citrus…');};};
 window.SINUS_HUB={status:hubStatus,write:()=>hubWrite(true)};
+/* lane 5 (26/11/2026): the Drive helpers for parts/70-links.js (folders by tag, plan.json, Yuzu inbox, hand-off), the
+   contract-v2 fields of status.json and a Settings section of its own. The code lives in the part; this only lends it the tools. */
+{const _hs=hubStatus;hubStatus=function(){const st=_hs();try{if(window.SINUS_LINKS&&SINUS_LINKS.statusV2)SINUS_LINKS.statusV2(st);}catch(e){}return st;};
+ window.SINUS_HUB.status=hubStatus;
+ const _h=syHtml;syHtml=function(){let h=_h();try{if(window.SINUS_LINKS&&SINUS_LINKS.settingsHtml)h+=SINUS_LINKS.settingsHtml();}catch(e){}return h;};
+ const _w=syWire;syWire=function(sec){_w(sec);try{if(window.SINUS_LINKS&&SINUS_LINKS.settingsWire)SINUS_LINKS.settingsWire(sec);}catch(e){}};
+ window.SINUS_DRIVE={fetch:hubFetch,tree:hubTree,find:hubFind,nameQ:hubNameQ,FILES:HUB_FILES,FOLDER:HUB_FOLDER,root:HUB.root,citrusUrl:'https://amaerys.github.io/Citrus-Maxima/',
+   on:()=>{const c=syGet(SYK)||{};return c.kind==='drive'&&!!c.client;},tok:()=>gTok(),full:gFull,scope:()=>GSCOPE,
+   signIn:()=>gSignIn(true),paint:()=>syPaint(),hubWrite:()=>{hubSet({fp:''});return hubWrite(true);}};}
 
 /* ================= DRIVE BACKUP (visible folder My Apps/hub/sinus): casebook PDF, monthly answers CSV, recap image ================= */
 const BK={folder:'Sinus',busy:false};
 const bkGet=()=>syGet('sinus_bk')||{};const bkSet=p=>sySet('sinus_bk',Object.assign(bkGet(),p));
-async function bkFolder(){return hubTree();}   /* the same tagged My Apps / hub / sinus folder as the hub (drive.file) */
+async function bkFolder(){return hubTree();}   /* the same tagged Sinus folder as the hub */
 async function bkFind(name,dir){const q="name='"+name.replace(/'/g,"\\'")+"' and '"+dir+"' in parents and trashed=false";const j=await hubFetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id,size,modifiedTime)');return j.files&&j.files[0]||null;}
 async function bkUpload(name,blob,mime,dir,fid){const meta=JSON.stringify(fid?{name}:{name,parents:[dir],mimeType:mime});const bnd='sinusbk'+Date.now().toString(36);
   const head='--'+bnd+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+meta+'\r\n--'+bnd+'\r\nContent-Type: '+mime+'\r\n\r\n';
