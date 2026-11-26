@@ -15431,6 +15431,8 @@ const _syHtml=syHtml;syHtml=function(){const h=_syHtml();const c=syCfg();if(!c||
   return h+'<div class="sy-hub"><b>Citrus Maxima</b><span class="note">'+esc(s.msg||'Sinus shares a one-line status (what is due and the minutes needed) with your scheduler through status.json in your Sinus folder in Drive (Citrus › Learning › Medicine › ECG - Sinus once Citrus Maxima organises Drive; until then My Apps / hub / sinus). Nothing else.')+'</span>'+own+'<div class="btnrow"><button class="tool sm" id="hubNow">Share now</button></div></div>';};
 const _syWire=syWire;syWire=function(sec){_syWire(sec);const b=sec.querySelector('#hubNow');if(b)b.onclick=async()=>{if(!gTok()){try{await gSignIn(true);}catch(e){toast(e.message);return;}}hubSet({fp:''});hubWrite(true);toast('Sharing with Citrus…');};};
 window.SINUS_HUB={status:hubStatus,write:()=>hubWrite(true)};
+/* lane 7 (weekly Claude loop, parts/90-cloop.js): the Drive helpers of this block, which code outside it cannot reach by name */
+window.SINUS_LOOPDRIVE={fetch:hubFetch,tree:hubTree,find:hubFind,mk:hubMk,nameQ:hubNameQ,files:HUB_FILES,token:()=>gTok(),signIn:()=>gSignIn(true),cfg:()=>syGet(SYK),scope:GSCOPE,fmt:syFmt};
 
 /* ================= DRIVE BACKUP (visible folder My Apps/hub/sinus): casebook PDF, monthly answers CSV, recap image ================= */
 const BK={folder:'Sinus',busy:false};
