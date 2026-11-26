@@ -12585,6 +12585,8 @@ function d3_render(){const v=$('v-learn');if(!v)return;let h=$('d3Home');
   v.classList.toggle('d3on',d3_isOn());if(!d3_isOn()){if(h)h.hidden=true;return;}
   if(!h){h=document.createElement('div');h.id='d3Home';h.className='d3';v.insertBefore(h,v.firstChild);h.addEventListener('click',d3_click);}
   h.hidden=false;
+  /* lane 2 (26/11/2026): the calm Home (parts/40-home.js) draws here unless "Full dashboard" was chosen for this visit */
+  try{if(typeof HOME2!=='undefined'&&HOME2&&HOME2.on()){h.classList.add('h2');HOME2.render(h);return;}}catch(e){console.error(e);}h.classList.remove('h2');
   const nm=S.profile&&S.profile.name?String(S.profile.name).trim():'';const rt=d3_readToday();
   const keep=$('mascotSlot');
   h.innerHTML='<div class="d3-head"><span class="d3-ms" data-ms></span><div><h1 class="d3-hi">'+esc(d3_greet()+(nm?', '+nm:''))+'</h1><p class="d3-date mono">'+d3_dmy()+(rt?' · '+rt+' ECG'+(rt===1?'':'s')+' read today':'')+'</p></div></div>'+
@@ -12629,6 +12631,8 @@ function d3_click(e){const t=e.target.closest('button');if(!t||t.disabled)return
 /* tapping the Home tab or brand returns to the dashboard */
 document.addEventListener('click',e=>{const b=e.target.closest('[data-grp="home"],.brand[data-go="learn"]');if(b&&d3_off){d3_off=false;}},true);
 D3HOME={on:d3_isOn,set:b=>{d3_off=!b;if(!$('v-learn').hidden)renderLearn();},render:()=>{try{d3_render();}catch(e){}},mix:D3M,startMix:min=>d3_startMix(min||d3_uiMin())};
+/* lane 2: internals the calm Home (parts/40-home.js) reuses; read-only use */
+D3HOME.x={N:d3_N,plan:d3_plan,planText:d3_planText,drill:d3_drill,drillScope:d3_drillScope,resume:d3_mixResume,cellSheet:d3_cellSheet,safeCard:d3_safeCard,readyCard:d3_readyCard,mapCard:d3_mapCard,footCard:d3_footCard,click:d3_click,lastMock:d3_lastMock,readToday:d3_readToday,greet:d3_greet,dmy:d3_dmy,uiMin:d3_uiMin,base:()=>d3_startMix(10,true),classic:()=>{d3_off=true;heroOn=false;renderLearn();}};
 }
 
 /* ================= WP06 PERFORMANCE (13/11/2026) =================
