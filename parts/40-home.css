@@ -19,7 +19,7 @@
 .h2-min{min-height:40px;min-width:62px;padding:6px 10px;border:0;border-radius:9px;background:transparent;color:var(--muted);font:600 13px var(--f-mono)}
 .h2-min[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:inset 0 0 0 2px var(--accent)}
 .h2-next{border-left:4px solid var(--accent)}
-.h2-fresh{padding:26px 22px}
+.h2-fresh{padding:26px 22px;max-width:760px}
 
 /* rings */
 .h2-rrow{display:grid;grid-template-columns:repeat(var(--n,3),minmax(0,1fr));gap:8px}
@@ -96,7 +96,7 @@
 .h2-qa{display:grid;justify-items:center;gap:4px;padding:10px 4px;min-height:64px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);font-size:12.5px;font-weight:600;text-align:center}
 .h2-qa span{font-size:20px;line-height:1;color:var(--accent-ink)}
 .h2-qa:hover,.h2-qa:focus-visible{border-color:var(--accent)}
-.h2-b-day .card{margin:0;padding:10px;box-shadow:none}
+.h2-b-day .card{margin:0;padding:0;border:0!important;background:none;box-shadow:none!important}
 .h2-b-day .md-daycard{display:grid;grid-template-columns:1fr;gap:8px}
 .h2-b-day .md-thumb{width:100%;height:auto}
 #h2Board .h2-b-day .eyebrow,#h2Board .h2-b-day .note{font-size:12px!important}

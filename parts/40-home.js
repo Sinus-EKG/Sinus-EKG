@@ -74,7 +74,8 @@ function h2_lastMockAge(){const X=h2_X();try{const m=S.mock;const h=Array.isArra
   if(!h||!h.length)return null;const x=h[h.length-1];const t=x.t||x.time||(x.d&&/^\d{4}-\d\d-\d\d$/.test(x.d)?new Date(x.d+'T12:00:00').getTime():null);return t?Math.floor((Date.now()-t)/DAY):null;}catch(e){return null;}}
 function h2_baseNeeds(){const out=[];const nA=h2_answers();
   /* can't-miss patterns read wrong last time: the worst */
-  try{const sf=READY.safety();sf.missed.filter(e=>!e.lastOk).forEach((e,i)=>out.push({score:4-i*.01,kind:'cm',title:'Can’t-miss missed: '+e.name,sub:'Missed '+e.miss+'× in your recent act-now reads; the last one was wrong.',action:{label:'Fix',run:()=>h2_drill(e.id)}}));}catch(e){}
+  try{const M=READY.safety().missed.filter(e=>!e.lastOk);M.slice(0,2).forEach((e,i)=>out.push({score:4-i*.01,kind:'cm',title:'Can’t-miss missed: '+e.name,sub:'Missed '+e.miss+'× in your recent act-now reads; the last one was wrong.',action:{label:'Fix',run:()=>h2_drill(e.id)}}));
+    if(M.length>2){const R=M.slice(2);out.push({score:3.5,kind:'cm',title:h2_pl(R.length,'more can’t-miss pattern')+' read wrong last time',sub:R.slice(0,4).map(e=>e.name).join(' · ')+(R.length>4?' …':''),action:{label:'Drill',run:()=>h2_scope('danger')}});}}catch(e){}
   const due=h2_due().length;
   if(due)out.push({score:due>=15?3:2.2,kind:'due',title:h2_pl(due,'review')+' due',sub:'Patterns you have seen, back on schedule before they fade.',action:{label:'Review',run:()=>h2_scope('due')}});
   if(nA>=40&&CON.mock){const age=h2_lastMockAge();if(age==null||age>=14)out.push({score:age==null?1.6:1.8,kind:'mock',title:age==null?'No mock exam yet':'Last mock exam '+age+' days ago',sub:'Adaptive and can’t-miss weighted. It shows how you read under exam conditions.',action:{label:'Take it',run:()=>go('concept','mock')}});}
@@ -153,7 +154,9 @@ document.addEventListener('click',e=>{const b=e.target.closest('#sheetBody .h2-d
   if(d.d3min){uiS().mixMin=+d.d3min;save();const X=h2_X();try{D3HOME.render();}catch(x){}h2_todaySheet();h2_bdSoon();return;}
   if(Object.keys(d).some(k=>/^d3/.test(k))){closeSheet();const X=h2_X();if(X)X.click(e);}});
 /* tapping the Home tab or brand returns to the calm Home */
-document.addEventListener('click',e=>{const b=e.target.closest('[data-grp="home"],.brand[data-go="learn"]');if(b)h2_full=false;},true);
+/* (the tab bar's own handler runs first and has already drawn Home, so draw again once both flags are reset) */
+document.addEventListener('click',e=>{const b=e.target.closest('[data-grp="home"],.brand[data-go="learn"]');if(!b)return;h2_full=false;
+  setTimeout(()=>{try{if(!$('v-learn').hidden)D3HOME.render();}catch(x){}},0);},true);
 
 /* ---- wide-screen board ---- */
 const H2_MQ='(min-width:1600px)';let h2_wide=false;try{const mq=matchMedia(H2_MQ);h2_wide=mq.matches;mq.addEventListener('change',e=>{h2_wide=e.matches;h2_bd();});}catch(e){}

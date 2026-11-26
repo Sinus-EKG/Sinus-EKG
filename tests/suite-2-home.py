@@ -44,7 +44,7 @@ with sync_playwright() as p:
         for vp,mob,look in vps:
             ctx=b.new_context(viewport={'width':vp[0],'height':vp[1]},has_touch=mob,is_mobile=mob)
             pg=ctx.new_page();errs=[];pg.on('pageerror',lambda e:errs.append(str(e)[:200]))
-            pg.clock.install(time=NOW)
+            pg.clock.install(time=NOW/1000)
             if pats is None:
                 pg.goto(U);pg.wait_for_timeout(1200);pats=pg.evaluate('SINUS_TEST.pats()');pg.evaluate('localStorage.clear()')
             st=seed(kind,pats,look)
