@@ -9,7 +9,7 @@
 .lk-ck{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:14px;color:var(--fg);cursor:pointer}
 .lk-ck input{width:20px;height:20px;accent-color:var(--accent);flex:0 0 auto}
 .lk-set>b{display:block;margin-top:12px}
-.lk-set>b:first-child{margin-top:0}
+.lk-set>b:first-child,.lk-scope+b{margin-top:0}
 .lk-scope{padding:10px 12px;margin-bottom:12px;border-radius:10px;border:1.5px solid var(--accent);background:var(--accent-soft)}
 .lk-scope b{display:block}
 @media (max-width:420px){.lk-back{padding:0 8px;font-size:12px}}

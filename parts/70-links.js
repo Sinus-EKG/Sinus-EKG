@@ -46,7 +46,8 @@ async function lkChild(parent,name,create){const D=lkD();const f=await D.find(D.
   const c=await D.fetch(D.FILES+'?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,mimeType:D.FOLDER,parents:[parent]})});return c&&c.id||null;}
 async function lkPath(names){let p='root';for(const n of names){const id=await lkChild(p,n,false);if(!id)return null;p=id;}return p;}
 /* {id, by:'tag'|'path'} or null. Never creates. Throws 'scope' when the sign-in cannot see other apps' folders. */
-async function lkFolder(tag){const D=lkD();if(!D||!D.full())throw new Error('scope');
+async function lkFolder(tag,fresh){const D=lkD();if(!D||!D.full())throw new Error('scope');
+  if(fresh&&LKX.tag[tag]&&!LKX.tag[tag].id)delete LKX.tag[tag];   /* a tap looks again for a folder that was missing */
   const t=await lkTagged(tag);if(t)return {id:t,by:'tag'};
   for(const p of LK_PATHS[tag]||[]){const id=await lkPath(p);if(id)return {id,by:'path'};}
   return null;}
@@ -130,7 +131,7 @@ function yzPack(cards){return {yuzu_pack:1,id:YZ_PACK,name:'Sinus: missed ECG pa
   tags:['auto::System::Cardiovascular','auto::Specialty::Cardiology','auto::Specialty::Emergency Medicine'],
   source:'Sinus ECG Trainer '+APPVER+' · mistake notebook · sent '+lkDmy(Date.now())+'; textbook points from Hudson et al., The Electrocardiogram in Emergency and Acute Care, 2023',
   cards:cards.map(c=>{const o=Object.assign({},c);delete o._at;return o;})};}
-async function yzInbox(){const f=await lkFolder('yuzu-data');if(!f){LKX.msg.yuzu='missing';return null;}
+async function yzInbox(fresh){const f=await lkFolder('yuzu-data',fresh);if(!f){LKX.msg.yuzu='missing';return null;}
   const col=await lkChild(f.id,'collection',false);if(!col){LKX.msg.yuzu='nocol';return null;}
   return lkChild(col,'inbox',true);}
 /* → {ok, n, msg}. Sent marks are written only after Drive accepted the file. */
@@ -138,7 +139,7 @@ async function yzSend(auto){const cards=yzCards(true);
   if(!cards.length){const m=yzCards(false).length?'Every missed pattern is already in Yuzu. New misses collect here.':'Nothing missed yet. Wrong answers collect in the mistake notebook.';return {ok:false,n:0,msg:m};}
   if(!lkOn())return {ok:false,n:0,msg:'Sign in to Google first (Settings › Sync across devices), then send.'};
   if(LKX.busy.yz)return {ok:false,n:0,msg:'Already sending…'};LKX.busy.yz=1;
-  try{const inbox=await yzInbox();if(!inbox)return {ok:false,n:0,msg:yzMissingMsg()};
+  try{const inbox=await yzInbox(!auto);if(!inbox)return {ok:false,n:0,msg:yzMissingMsg()};
     const name=YZ_PACK+'-'+dkey()+'-'+Date.now().toString(36)+'.json';
     await lkPut(inbox,name,yzPack(cards));
     const y=yzS();cards.forEach(c=>{y.sent[c.id]=Math.max(+y.sent[c.id]||0,c._at||Date.now());});y.last={at:Date.now(),n:cards.length,auto:!!auto};y.week=lkWeek();LKX.msg.yuzu='ok';save();
@@ -180,7 +181,7 @@ function hoReal(o,ok,chosen){const pr=realPrimary(o),p=PAT[pr];let D=null;try{D=
 async function hoSend(h,btn){const lk=lkS();const done=t=>{if(btn){btn.textContent=t;btn.disabled=true;}};
   if(!lkOn()){const okc=await copyText(JSON.stringify(h),null);toast('Not sent: sign in to Google first (Settings).'+(okc?' The case was copied instead.':''));return false;}
   if(LKX.busy.ho)return false;LKX.busy.ho=1;if(btn)btn.disabled=true;
-  try{const f=await lkFolder('handoff');if(!f){LKX.msg.handoff='missing';toast('The reasoning app’s hand-off folder is not on Drive yet (tag handoff, or My Apps / hub / handoff). Nothing was sent.');if(btn)btn.disabled=false;return false;}
+  try{const f=await lkFolder('handoff',true);if(!f){LKX.msg.handoff='missing';toast('The reasoning app’s hand-off folder is not on Drive yet (tag handoff, or My Apps / hub / handoff). Nothing was sent.');if(btn)btn.disabled=false;return false;}
     await lkPut(f.id,h.id+'.json',h);lk.ho.last={at:Date.now(),title:h.title};lk.ho.n=(+lk.ho.n||0)+1;LKX.msg.handoff='ok';save();done('Sent ✓');toast('Sent to the reasoning app’s inbox on Drive.');return true;}
   catch(e){LKX.msg.handoff='err:'+((e&&e.message)||e);toast(lkWhy(e).replace(' Nothing was marked as sent.',' The case was not sent.'));if(btn)btn.disabled=false;return false;}
   finally{LKX.busy.ho=0;lkPaint();}}
@@ -225,7 +226,7 @@ function lkFolderLine(tag){const m=LKX.msg[tag==='yuzu-data'?'yuzu':tag]||'';
 function lkSettingsHtml(){const D=lkD();if(!D||!D.on())return '';const signed=!!D.tok(),full=D.full(),c=lkS().cp,ho=lkS().ho;
   const scope=signed&&!full?'<div class="lk-scope" role="alert"><b>One tap needed: allow Drive access</b><span class="note">Sinus now asks to see your Drive so it can read your Citrus plan and send cards to Yuzu. Your earlier sign-in only covered Sinus’s own files. Google shows its permission screen once.</span><div class="btnrow"><button class="btn" data-lkscope>Allow Drive access</button></div></div>':'';
   const yl=yzLastLine(),hl=ho.last&&ho.last.at?'Last sent '+lkDmy(ho.last.at)+': '+ho.last.title+'.':'';
-  return '<div class="sy-hub lk-set">'+scope+
+  return '<div class="sy-hub lk-set">'+scope+'<b>Google permissions</b><span class="note">Sinus can see your Drive so it can read your Citrus plan and send cards to Yuzu; it only writes inside its own folder, Yuzu’s inbox and the hand-off folder.</span>'+
     '<b>Shift-aware days (Citrus)</b><span class="note" data-lkcitrus>'+esc(lkCitrusLine())+'</span>'+
     '<label class="lk-ck"><input type="checkbox" data-cpoff'+(c.off?'':' checked')+'> Make night, post-night and shift days light (10 minutes, reviews first)</label>'+
     '<div class="btnrow"><button class="tool sm" data-cpread'+(signed&&full?'':' disabled')+'>Read the plan now</button></div>'+
