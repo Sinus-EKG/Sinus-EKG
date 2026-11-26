@@ -9,6 +9,9 @@
      focus:{ids,set,after}, finals:{week:1}}. Per device (localStorage sinus_cloop[:profile]): file ids, fingerprints, times, read marks.
    Globals: window.CLOOP {pending(), open(), sendNow(), check(), state(), focus(), parse} and CON 'weekreport' (Me tab). */
 const CL=CLOOP_CORE;
+/* the Drive helpers live inside the sync block's own scope; it exports them as window.SINUS_LOOPDRIVE */
+const CL_NODR={fetch:()=>Promise.reject(new Error('nosignin')),tree:()=>Promise.reject(new Error('nosignin')),token:()=>null,signIn:()=>Promise.reject(new Error('Google sign-in is not available in this copy.')),cfg:()=>null,scope:'',fmt:x=>x,files:''};
+const DR=()=>window.SINUS_LOOPDRIVE||CL_NODR;
 const CL_LK='sinus_cloop'+(PROF_SLUG?':'+PROF_SLUG:''),CL_EK='sinus_errlog';
 const CL_PACKET_MS=10*60000,CL_REVIEW_MS=30*60000;
 const clGet=()=>{try{const v=JSON.parse(localStorage.getItem(CL_LK)||'null');return v&&typeof v==='object'?v:{};}catch(e){return {};}};
@@ -46,17 +49,17 @@ function clCtx(week,final){const c=clS();let mist=[];try{mist=mbGroups();}catch(
 function clPacket(week,final){return CL.buildPacket(clCtx(week||CL.loopWeek(dkey()),!!final));}
 
 /* ---- Drive (through hubFetch: the same Google sign-in as sync) ---- */
-async function clDir(){const L=clGet();const apps=await hubTree();
+async function clDir(){const L=clGet();const apps=await DR().tree();
   if(L.dir&&L.dirOf===apps&&L.dirOk===CL_SESSION)return L.dir;
-  if(L.dir&&L.dirOf===apps){try{const f=await hubFetch(HUB_FILES+'/'+L.dir+'?fields=id,trashed');if(f&&!f.trashed){clSet({dirOk:CL_SESSION});return L.dir;}}catch(e){if(e.message==='nosignin')throw e;}}
-  let d=await hubFind(hubNameQ(CL.LOOP.folder,apps));const id=d?d.id:await hubMk(CL.LOOP.folder,apps,{citrusLoop:'sinus'});
+  if(L.dir&&L.dirOf===apps){try{const f=await DR().fetch(DR().files+'/'+L.dir+'?fields=id,trashed');if(f&&!f.trashed){clSet({dirOk:CL_SESSION});return L.dir;}}catch(e){if(e.message==='nosignin')throw e;}}
+  let d=await DR().find(DR().nameQ(CL.LOOP.folder,apps));const id=d?d.id:await DR().mk(CL.LOOP.folder,apps,{citrusLoop:'sinus'});
   clSet({dir:id,dirOf:apps,dirOk:CL_SESSION});return id;}
 const CL_SESSION=Math.random().toString(36).slice(2);
-async function clFind(name,dir){const q="name='"+name.replace(/'/g,"\\'")+"' and '"+dir+"' in parents and trashed=false";const j=await hubFetch(HUB_FILES+'?q='+encodeURIComponent(q)+'&orderBy=createdTime&fields=files(id)');return j&&j.files&&j.files[0]?j.files[0].id:null;}
+async function clFind(name,dir){const q="name='"+name.replace(/'/g,"\\'")+"' and '"+dir+"' in parents and trashed=false";const j=await DR().fetch(DR().files+'?q='+encodeURIComponent(q)+'&orderBy=createdTime&fields=files(id)');return j&&j.files&&j.files[0]?j.files[0].id:null;}
 async function clCreate(name,text,dir){const bnd='sinusloop'+Date.now().toString(36);const meta=JSON.stringify({name,parents:[dir],mimeType:'application/json',appProperties:{citrusLoop:'packet'}});
   const body='--'+bnd+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+meta+'\r\n--'+bnd+'\r\nContent-Type: application/json\r\n\r\n'+text+'\r\n--'+bnd+'--';
-  const r=await hubFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+bnd},body});return r.id;}
-async function clUpdate(id,text){await hubFetch('https://www.googleapis.com/upload/drive/v3/files/'+id+'?uploadType=media&fields=id',{method:'PATCH',headers:{'Content-Type':'application/json'},body:text});return id;}
+  const r=await DR().fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+bnd},body});return r.id;}
+async function clUpdate(id,text){await DR().fetch('https://www.googleapis.com/upload/drive/v3/files/'+id+'?uploadType=media&fields=id',{method:'PATCH',headers:{'Content-Type':'application/json'},body:text});return id;}
 /* write one week's packet in place (two devices: both update the oldest file of that name) → 'written' | 'same' */
 async function clWritePacket(packet){const L=clGet();const fp=packet.week.start+':'+(packet.week.final?'f':'')+CL.fingerprint(packet);
   const fps=L.fps||{};if(fps[packet.week.start]===fp)return 'same';
@@ -65,20 +68,20 @@ async function clWritePacket(packet){const L=clGet();const fp=packet.week.start+
   if(id){try{await clUpdate(id,text);}catch(e){if(!/drive 404/.test(e.message))throw e;id=null;}}
   if(!id){id=await clFind(name,dir);if(id)await clUpdate(id,text);else id=await clCreate(name,text,dir);}
   const keep=k=>k>=CL.addDays(packet.week.start,-21);const ni={},nf={};Object.keys(ids).filter(keep).forEach(k=>ni[k]=ids[k]);Object.keys(fps).filter(keep).forEach(k=>nf[k]=fps[k]);
-  ni[packet.week.start]=id;nf[packet.week.start]=fp;clSet({pid:ni,fps:nf,pAt:clNow(),pMsg:'Week packet written '+syFmt(new Date().toISOString())+'.',pOk:true});return 'written';}
+  ni[packet.week.start]=id;nf[packet.week.start]=fp;clSet({pid:ni,fps:nf,pAt:clNow(),pMsg:'Week packet written '+DR().fmt(new Date().toISOString())+'.',pOk:true});return 'written';}
 /* every review file this device has not read; bad files are counted and not fetched again until they change */
 async function clReadReviews(){const dir=await clDir();const q="'"+dir+"' in parents and name contains '"+CL.LOOP.reviewPrefix+"' and trashed=false";
-  const j=await hubFetch(HUB_FILES+'?q='+encodeURIComponent(q)+'&pageSize=200&fields=files(id,name,mimeType,modifiedTime,size)');
+  const j=await DR().fetch(DR().files+'?q='+encodeURIComponent(q)+'&pageSize=200&fields=files(id,name,mimeType,modifiedTime,size)');
   const files=((j&&j.files)||[]).filter(f=>f&&CL.reviewName(f.name));const L=clGet();const seen=L.seen||{},next={};let got=0,bad=0;
   files.sort((a,b)=>(a.modifiedTime||'')<(b.modifiedTime||'')?-1:1);
   for(const f of files){const mod=f.modifiedTime||'';next[f.id]=mod;if(seen[f.id]===mod)continue;
     if(+f.size>CL.LOOP.maxBytes){bad++;continue;}
-    let text='';try{const b=await hubFetch(HUB_FILES+'/'+f.id+(f.mimeType==='application/vnd.google-apps.document'?'/export?mimeType=text%2Fplain':'?alt=media'),{blob:true});if(b.size>CL.LOOP.maxBytes){bad++;continue;}text=await b.text();}
+    let text='';try{const b=await DR().fetch(DR().files+'/'+f.id+(f.mimeType==='application/vnd.google-apps.document'?'/export?mimeType=text%2Fplain':'?alt=media'),{blob:true});if(b.size>CL.LOOP.maxBytes){bad++;continue;}text=await b.text();}
     catch(e){if(e.message==='nosignin'||/drive (429|5\d\d)/.test(e.message))throw e;bad++;continue;}
     const rv=CL.parseReview(text);const nm=CL.reviewName(f.name);
     if(!rv||rv.week.start!==nm.week){bad++;continue;}
     if(clKeep(rv,{rank:nm.n,file:f.name,mod}))got++;}
-  clSet({seen:next,rAt:clNow(),rMsg:'Checked for reviews '+syFmt(new Date().toISOString())+(got?': '+got+' new.':'.')+(bad?' '+bad+' file'+(bad>1?'s':'')+' could not be used.':''),rOk:true,rBad:(L.rBad||0)+bad});
+  clSet({seen:next,rAt:clNow(),rMsg:'Checked for reviews '+DR().fmt(new Date().toISOString())+(got?': '+got+' new.':'.')+(bad?' '+bad+' file'+(bad>1?'s':'')+' could not be used.':''),rOk:true,rBad:(L.rBad||0)+bad});
   if(got)save();return {got,bad};}
 /* keep a checked review in the synced record when it is newer than the one there; the owner's taps (done) stay */
 function clKeep(rv,meta){const c=clS();const old=c.reviews[rv.week.start];const cand={json:JSON.stringify(rv),at:rv.writtenAt||'',rank:meta.rank||1,file:String(meta.file||'').slice(0,80),mod:meta.mod||''};
@@ -88,7 +91,7 @@ function clKeep(rv,meta){const c=clS();const old=c.reviews[rv.week.start];const 
 
 /* ---- when it runs ---- */
 let clBusy=false,clTimer=null;
-function clReady(){const c=syGet(SYK)||{};return clOn()&&c.kind==='drive'&&!!c.client&&!!gTok()&&navigator.onLine!==false;}
+function clReady(){const c=DR().cfg()||{};return clOn()&&c.kind==='drive'&&!!c.client&&!!DR().token()&&navigator.onLine!==false;}
 function clHadWeek(week){const t0=CL.kms(week.start),t1=CL.kms(CL.addDays(week.end,1));return (mxS().log||[]).some(r=>Array.isArray(r)&&r[0]>=t0&&r[0]<t1);}
 /* reason: 'save' | 'sync' | 'now' (Send now: both halves, no waiting) */
 async function clTick(reason){if(clBusy||!clReady())return {skip:true};clBusy=true;const L=clGet();const now=clNow();const out={};
@@ -106,7 +109,7 @@ async function clTick(reason){if(clBusy||!clReady())return {skip:true};clBusy=tr
 function clSoon(reason,ms){clearTimeout(clTimer);clTimer=setTimeout(()=>{clTick(reason).catch(()=>{});},ms==null?20000:ms);}
 {const _s=save;save=function(){const r=_s.apply(this,arguments);try{if(r&&clOn()){const L=clGet();if(clNow()-(L.pAt||0)>=CL_PACKET_MS||L.wk!==CL.loopWeek(dkey()).start)clSoon('save');}}catch(e){}return r;};}
 /* a good sync = the sync record's `last` moved and it ended ok; a failed one is logged for the packet's health.failedSyncs */
-function clWatchSync(){try{const c=syGet(SYK)||{};const L=clGet();
+function clWatchSync(){try{const c=DR().cfg()||{};const L=clGet();
   if(c.errAt&&c.errAt!==L.errAt&&c.ok===false){const f=(L.fails||[]).concat([{at:c.errAt,error:String(c.msg||'').slice(0,200)}]).slice(-8);clSet({errAt:c.errAt,fails:f});}
   if(c.last&&c.last!==L.syncLast&&c.ok!==false){clSet({syncLast:c.last});clSoon('sync',1500);}}catch(e){}}
 setInterval(clWatchSync,60000);setTimeout(clWatchSync,9000);
@@ -141,10 +144,10 @@ function clChart(weeks,cur){const pts=weeks.filter(w=>w.v!=null).slice(-12);if(p
   return '<svg class="cl-chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Score over the last '+pts.length+' weeks: '+pts.map(p=>p.v).join(', ')+'"><line x1="'+P+'" x2="'+(W-P)+'" y1="'+y(50)+'" y2="'+y(50)+'" class="cl-mid"/><polyline points="'+pts.map((p,i)=>x(i).toFixed(1)+','+y(p.v).toFixed(1)).join(' ')+'"/>'+
     pts.map((p,i)=>'<circle cx="'+x(i).toFixed(1)+'" cy="'+y(p.v).toFixed(1)+'" r="'+(p.w===cur?3.6:2.2)+'"'+(p.w===cur?' class="on"':'')+'><title>'+esc(CL.dmy(p.w))+': '+p.v+'</title></circle>').join('')+'</svg>';}
 function clLines(secs){return secs.map(s=>'<h3 class="md-h">'+esc(s.title)+'</h3><ul class="bul">'+s.lines.map(l=>'<li>'+esc(l)+'</li>').join('')+'</ul>').join('');}
-function clStatusHtml(){const L=clGet();const c=syGet(SYK)||{};
+function clStatusHtml(){const L=clGet();const c=DR().cfg()||{};
   if(!clOn())return 'The weekly review is off (Settings → Weekly Claude review).';
   if(c.kind!=='drive')return 'The weekly review travels through Google Drive: turn on Drive sync in Settings to send the week packet.';
-  const parts=[L.pMsg||'No week packet sent from this device yet.',L.rMsg||''];if(!/\/auth\/drive(\s|$)/.test(GSCOPE))parts.push('Reading Claude’s reviews needs full Drive access, which this version of Sinus does not ask for yet.');
+  const parts=[L.pMsg||'No week packet sent from this device yet.',L.rMsg||''];if(!/\/auth\/drive(\s|$)/.test(DR().scope))parts.push('Reading Claude’s reviews needs full Drive access, which this version of Sinus does not ask for yet.');
   return parts.filter(Boolean).join(' ');}
 function clBuild(host){const c=clS();const weeks=Object.keys(c.reviews).sort().reverse();
   const w=document.createElement('div');w.className='cl-wr';host.appendChild(w);let cur=weeks[0]||null;
@@ -190,8 +193,8 @@ function clSettings(){const sb=$('sheetBody');if(!sb||!sb.querySelector('#rstBtn
   const diag=[...sb.querySelectorAll('.set-sec')].find(x=>/Diagnostics/.test(x.textContent));sb.insertBefore(sec,diag||null);
   sec.querySelector('#clOn').addEventListener('change',e=>{clS().off=!e.target.checked;save();sec.querySelector('#clNow').disabled=!e.target.checked;clPaint();toast(e.target.checked?'Weekly review on.':'Weekly review off: no packets are sent and no reviews are read.');});
   const ta=sec.querySelector('#clNote');ta.addEventListener('input',()=>{clS().note[CL.loopWeek(dkey()).start]=ta.value.slice(0,1200);clearTimeout(ta._t);ta._t=setTimeout(save,600);});
-  sec.querySelector('#clNow').addEventListener('click',async()=>{if(!clOn())return;const c=syGet(SYK)||{};if(c.kind!=='drive'){toast('Turn on Drive sync first (Sync across devices → Google Drive).');return;}
-    if(!gTok()){try{await gSignIn(true);}catch(e){toast(e.message);return;}}
+  sec.querySelector('#clNow').addEventListener('click',async()=>{if(!clOn())return;const c=DR().cfg()||{};if(c.kind!=='drive'){toast('Turn on Drive sync first (Sync across devices → Google Drive).');return;}
+    if(!DR().token()){try{await DR().signIn();}catch(e){toast(e.message);return;}}
     toast('Sending the week packet…');const r=await clTick('now');toast(r.error?clStatusHtml():r.skip?'Busy: try again in a moment.':'Week packet '+(r.packet==='same'?'already up to date':'sent')+(r.reviews&&r.reviews.got?'; '+r.reviews.got+' new review'+(r.reviews.got>1?'s':''):'')+'.');});
   sec.querySelector('[data-clopen]').addEventListener('click',()=>go('concept','weekreport'));}
 {const _os=openSheet;openSheet=function(html){_os.apply(this,arguments);try{Promise.resolve().then(()=>{try{clSettings();}catch(e){}});}catch(e){}};}
@@ -200,3 +203,11 @@ window.CLOOP={pending:clPending,open:()=>go('concept','weekreport'),sendNow:()=>
   state:()=>({on:clOn(),week:CL.loopWeek(dkey()),local:clGet(),reviews:Object.keys(clS().reviews).sort()}),
   packet:(final,week)=>clPacket(week?CL.loopWeek(week):null,final),parse:CL.parseReview,core:CL,
   _keep:(raw,meta)=>{const r=CL.parseReview(raw);if(!r)return false;const k=clKeep(r,meta||{});if(k)save();return k;},_tick:clTick};
+window.CLOOP.waiting=clPending;
+/* Home "needs you" (lane 2: HOME2.addNeed) and the Settings data card (lane 3: DATACARD.addRow), when present */
+function clRegister(){
+  try{if(typeof HOME2!=='undefined'&&HOME2&&typeof HOME2.addNeed==='function'&&!clRegister.home){clRegister.home=1;
+    HOME2.addNeed(()=>{const n=clPending();return n?{score:2,title:n===1?'Claude’s week report is ready':n+' week reports to read',sub:'Read it, then tap any suggestion you want to use.',action:{label:'Open the week report',run:()=>go('concept','weekreport')}}:null;});}}catch(e){}
+  try{if(typeof DATACARD!=='undefined'&&DATACARD&&typeof DATACARD.addRow==='function'&&!clRegister.card){clRegister.card=1;
+    DATACARD.addRow(()=>{const L=clGet();if(!clOn())return {k:'Weekly Claude review',v:'off',s:'warn'};return {k:'Weekly Claude review',v:L.pAt?'packet sent '+DR().fmt(new Date(L.pAt).toISOString()):'no packet sent yet',s:L.pOk===false?'bad':L.pAt?'ok':'warn'};});}}catch(e){}}
+clRegister();setTimeout(clRegister,0);setTimeout(clRegister,3000);
