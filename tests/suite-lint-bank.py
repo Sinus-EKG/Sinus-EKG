@@ -1,7 +1,7 @@
 """Question-bank lint (lane 8, 26/11/2026; after Buffer 5.0.0 tests/lint.js and Embergine tests/lint_bank.py).
 Every fixed-text MCQ bank in sinus.html, read as the app shows it:
  - ER cases (md_case data): steps 2 urgency, 3 first action, 4 disposition, read from the real page (each case is
-   played through: options in display order, the right answer from the feedback);
+   played through: options in display order) with the right answer from the case's own key (SINUS_TEST.erKey);
  - the quiz's "Which feature clinched it?" options; the understanding questions in practice sessions
    (first action, mechanism, where, cause) (SINUS_TEST.banks(), parts/95-banks.js); the lead-reversal lab quiz (from its page).
  Not banks of fixed text, so not linted: level-exam and mock-exam items (pattern names only), Teach it back
@@ -20,8 +20,8 @@ ER="""async()=>{const out=[];const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   for(let i=0;i<n;i++){const b=document.querySelector('.md-cbtn[data-i="'+i+'"]');if(!b){out.push({err:'no case '+i});continue;}b.click();await sleep(0);
     for(let s=0;s<4;s++){const right=document.querySelector('.md-steps');const ask=right&&right.querySelector('.md-ask');if(!ask){out.push({err:'no step '+s+' case '+i});break;}
       const bs=[...ask.querySelectorAll('[data-o]')];const opts=bs.map(x=>{const c=x.cloneNode(true);const k=c.querySelector('.md-k');if(k)k.remove();return c.textContent.trim();});
-      bs[0].click();const dn=right.querySelectorAll('.md-done')[s];const ok=dn.classList.contains('ok');const best=ok?opts[0]:(dn.querySelector('span')||{textContent:''}).textContent.replace(/^Best:\\s*/,'').trim();
-      out.push({bank:['er-read','er-urgency','er-action','er-dispo'][s],q:'case '+(i+1),opts,ok:opts.indexOf(best)});}
+      const bank=['er-read','er-urgency','er-action','er-dispo'][s];const key=SINUS_TEST.erKey(i)||{};
+      bs[0].click();out.push({bank,q:'case '+(i+1)+' '+key.id,opts,ok:s?opts.indexOf(key[bank]):0});}
     const l=document.querySelector('.md-l');if(l)l.click();await sleep(0);}
   return out;}"""
 fails=[];warn=[]
@@ -50,7 +50,7 @@ with sync_playwright() as p:
     pg=ctx.new_page();errs=[];pg.on('pageerror',lambda e:errs.append(str(e)[:200]))
     pg.goto(U);pg.wait_for_timeout(1500)
     items=[]
-    for rep in range(4):items+=pg.evaluate(ER)   # options are shuffled per showing: four passes keep the position check out of sampling noise
+    for rep in range(6):items+=pg.evaluate(ER)   # options are shuffled per showing: six passes keep the position check out of sampling noise
     bad=[x for x in items if 'err' in x or x.get('ok',-1)<0]
     if bad:fails.append('ER cases could not be read: %s'%bad[:3])
     items=[x for x in items if 'err' not in x and x['ok']>=0 and x['bank']!='er-read']  # er-read options are pattern names

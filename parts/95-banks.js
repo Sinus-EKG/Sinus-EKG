@@ -18,5 +18,8 @@ try{window.SINUS_TEST=window.SINUS_TEST||{};SINUS_TEST.banks=function(n){n=n||3;
       const wrongs=typeof qzClinchWrongs==='function'?qzClinchWrongs(p,right,others,D):shuffle(others.map(q=>q.look[Math.floor(Math.random()*q.look.length)])).slice(0,3);
       right=lint_fitRight(p.look,right,wrongs);const opts=shuffle([right].concat(wrongs));out.push({bank:'clinch',q:pid,opts,ok:opts.indexOf(right)});}});
   /* understanding questions (makeKnow) */
-  ids.forEach(pid=>{if(!DEEP[pid])return;for(let k=0;k<n*3;k++){const it=makeKnow(pid);if(it)out.push({bank:'know-'+it.qt,q:pid,opts:it.opts.slice(),ok:+it.okKey});}});
-  return out;};}catch(e){}
+  ids.forEach(pid=>{if(!DEEP[pid])return;for(let k=0;k<n*6;k++){const it=makeKnow(pid);if(it)out.push({bank:'know-'+it.qt,q:pid,opts:it.opts.slice(),ok:+it.okKey});}});
+  return out;};
+  /* ER case i: the right answer of each fixed-text step, from the same functions the case uses (dangerOf, actOf, md_dispo) */
+  SINUS_TEST.erKey=function(i){const id=MD_CASE_IDS.filter(md_ok)[i];if(!id)return null;const a=actOf(id),d=md_dispo(id)[0];
+    return {id,'er-urgency':(MD_URG.find(x=>x[0]===dangerOf(id))||[])[1],'er-action':(ACTS.find(x=>x[0]===a)||[])[1],'er-dispo':(MD_DISP.find(x=>x[0]===d)||[])[1]};};}catch(e){}
